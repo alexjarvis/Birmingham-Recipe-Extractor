@@ -37,8 +37,16 @@ foreach ($products as $product) {
         'body_html' => $product['body_html']
     ];
 
-    // If the product has a 'recipe' tag, retrieve the recipe from its page
-    if (in_array('recipe', $product['tags'])) {
+    // Initialize recipe variables
+    $recipeHtml = '';
+    $recipeComponents = [];
+
+    // Check if "Ink Recipe" appears in body_html for special cases
+    if (strpos($product['body_html'], 'Ink Recipe') !== false) {
+        // Special case: Extract recipe from body_html
+        $recipeHtml = $product['body_html'];
+    } elseif (in_array('recipe', $product['tags'])) {
+        // Standard case: Fetch the recipe from the product page if tagged as "recipe"
         $handle = $product['handle'];
         $recipeUrl = "https://www.birminghampens.com/products/{$handle}";
 
@@ -62,42 +70,34 @@ foreach ($products as $product) {
             $recipeNode = $xpath->query("//div[contains(@class, 'metafield-rich_text_field')]");
 
             if ($recipeNode->length > 0) {
-                // Store original recipe HTML
-                $recipeHtml = '';
                 foreach ($recipeNode[0]->childNodes as $child) {
                     $recipeHtml .= $dom->saveHTML($child);
                 }
-
-                // Normalize non-breaking spaces
-                $recipeHtml = str_replace("\xc2\xa0", ' ', $recipeHtml); // Handle non-breaking spaces
-                $enrichedProduct['recipe'] = trim($recipeHtml);
-
-                // Initialize recipe components array
-                $recipeComponents = [];
-
-                // Debugging output to check HTML before parsing
-                echo "Parsing recipe HTML: $recipeHtml\n";
-
-                // Improved regex to capture parts with or without tags
-                if (preg_match_all('/(\d+)\s+Part[s]?\s*(?:<[^>]*>)?([\w\s]+)(?=<\/a>|<\/p>|<br>|\n|$)/i', $recipeHtml, $matches)) {
-                    foreach ($matches[2] as $index => $name) {
-                        // Clean up the ingredient name
-                        $name = trim(html_entity_decode(strip_tags($name)));
-                        $quantity = (int)$matches[1][$index];  // Extract the quantity
-                        $recipeComponents[$name] = $quantity;  // Store in components array
-
-                        // Debugging output for each matched component
-//                        echo "Matched component: Name = $name, Quantity = $quantity\n";
-                    }
-                }
-//                } else {
-//                    echo "No matches found in recipe HTML.\n";
-//                }
-
-                $enrichedProduct['recipe_components'] = $recipeComponents;
             }
         }
     }
+
+    // Store the original recipe HTML
+    $enrichedProduct['recipe'] = trim($recipeHtml);
+
+    // If we have recipe HTML, parse it for components
+    if ($recipeHtml) {
+        // Normalize non-breaking spaces
+        $recipeHtml = str_replace("\xc2\xa0", ' ', $recipeHtml);
+
+        // Improved regex to capture parts with or without <a> tags and variations in spacing
+        if (preg_match_all('/(\d+)\s+Part[s]?\s*(?:<[^>]*>)?([\w\s]+)(?=<\/a>|<\/p>|<br>|\n|$)/i', $recipeHtml, $matches)) {
+            foreach ($matches[2] as $index => $name) {
+                // Clean up the ingredient name
+                $name = trim(html_entity_decode(strip_tags($name)));
+                $quantity = (int) $matches[1][$index];  // Extract the quantity
+                $recipeComponents[$name] = $quantity;  // Store in components array
+            }
+        }
+    }
+
+    // Assign parsed components to the enriched product
+    $enrichedProduct['recipe_components'] = $recipeComponents;
 
     // Add enriched product to the results array
     echo $product['title'] . PHP_EOL;
