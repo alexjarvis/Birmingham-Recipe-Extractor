@@ -1,7 +1,7 @@
 <?php
 
 // Function to fetch and parse HTML content from a URL
-function fetchInkRecipe($url, $query): string
+function fetchInkRecipe($url, $query): array
 {
     // Initialize cURL
     $ch = curl_init();
@@ -19,7 +19,7 @@ function fetchInkRecipe($url, $query): string
     if (curl_errno($ch)) {
         echo 'cURL error: ' . curl_error($ch);
         curl_close($ch);
-        return '';
+        return [];
     }
 
     // Close cURL session
@@ -34,26 +34,62 @@ function fetchInkRecipe($url, $query): string
     $xpath = new DOMXPath($dom);
     $recipeNode = $xpath->query($query);
 
-    // Process content with preserved <p> tags and <a> tags formatted as requested
-    $recipe = '';
-    if ($recipeNode->length > 0) {
-        foreach ($recipeNode[0]->childNodes as $child) {
-            if ($child->nodeName === 'p') {
-                // Extract text content within each <p> element
-                $line = '';
-                foreach ($child->childNodes as $subChild) {
-                    if ($subChild->nodeName === '#text') {
-                        $line .= $subChild->nodeValue;
-                    } elseif ($subChild->nodeName === 'a') {
-                        $line .= $subChild->nodeValue . ' - ' . $subChild->getAttribute('href');
-                    }
-                }
-                $recipe .= trim($line) . "\n";
-            }
+    // Keywords to check in the recipe body
+    $keywords = ['Keystone', 'Everlasting', 'Twinkle', 'Delicate', 'Atomink', 'Recipe coming soon'];
+
+    // If no recipe content is found, return an empty array
+    if ($recipeNode->length === 0) {
+        return [];
+    }
+
+    // Get the full recipe text for keyword detection
+    $fullRecipeText = $dom->saveHTML($recipeNode[0]);
+
+    // Check for keywords in the recipe
+    foreach ($keywords as $keyword) {
+        if (stripos($fullRecipeText, $keyword) !== false) {
+            return [
+                $keyword => $keyword,
+            ];
         }
     }
 
-    return trim($recipe); // Remove any trailing whitespace
+    // Process each line in the recipe and format as requested
+    $recipe = [];
+    foreach ($recipeNode[0]->childNodes as $child) {
+        if ($child->nodeName === 'p') {
+            $line = [
+                'Name' => '',
+                'Quantity' => '',
+                'URL' => ''
+            ];
+
+            // Iterate over child nodes in <p> to parse quantity and name
+            foreach ($child->childNodes as $subChild) {
+                if ($subChild->nodeName === '#text') {
+                    // Normalize non-breaking spaces and extract quantity
+                    $text = trim(str_replace("\xc2\xa0", ' ', $subChild->nodeValue));
+                    if (preg_match('/^(\d+)\s+Part[s]?\b/i', $text, $matches)) {
+                        $line['Quantity'] = $matches[1];
+                    }
+                } elseif ($subChild->nodeName === 'a') {
+                    // Set the name to the anchor text and extract the URL
+                    $line['Name'] = trim($subChild->nodeValue);
+                    $line['URL'] = $subChild->getAttribute('href');
+                }
+            }
+
+            // Use 'Name' as the key in the recipe array
+            $key = $line['Name'];
+            $recipe[$key] = [
+                'Name' => trim($key),
+                'Quantity' => trim($line['Quantity']),
+                'URL' => trim($line['URL']),
+            ];
+        }
+    }
+
+    return $recipe;
 }
 
 // Load the main HTML file
@@ -97,9 +133,9 @@ foreach ($productNodes as $node) {
     $recipe = $url ? fetchInkRecipe($url, "//div[contains(@class, 'metafield-rich_text_field')]") : '';
 
     $product = [
-        'Name' => $name,
-        'URL' => $url,
-        'Price' => $price,
+        'Name' => trim($name),
+        'URL' => trim($url),
+        'Price' => trim($price),
         'Sold Out' => $soldOut,
         'Sale' => $onSale,
         'Recipe' => $recipe
