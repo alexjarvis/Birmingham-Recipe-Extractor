@@ -105,6 +105,6 @@ foreach ($products as $product) {
 }
 
 // Write the enriched data to products_enriched.json
-file_put_contents('products_enriched.json', json_encode($enrichedProducts, JSON_PRETTY_PRINT));
+file_put_contents('output/products_enriched.json', json_encode($enrichedProducts, JSON_PRETTY_PRINT));
 
 echo "Enriched data written to products_enriched.json\n";
