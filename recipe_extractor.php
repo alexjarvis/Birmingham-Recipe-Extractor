@@ -1,5 +1,16 @@
 <?php
 
+$outputDir = __DIR__ . '/output'; // Define the path to the output directory
+
+// Check if the directory exists
+if (!is_dir($outputDir)) {
+    // If it doesn't exist, create the directory with permissions
+    mkdir($outputDir, 0777, true);
+    echo "Directory 'output' created.\n";
+} else {
+    echo "Directory 'output' already exists.\n";
+}
+
 // Load JSON file containing products
 $jsonData = file_get_contents('products.json');
 $products = json_decode($jsonData, true);
@@ -85,8 +96,8 @@ foreach ($products as $product) {
         // Normalize non-breaking spaces
         $recipeHtml = str_replace("\xc2\xa0", ' ', $recipeHtml);
 
-        // Improved regex to capture parts with or without <a> tags and variations in spacing
-        if (preg_match_all('/(\d+)\s+Part[s]?\s*(?:<[^>]*>)?([\w\s]+)(?=<\/a>|<\/p>|<br>|\n|$)/i', $recipeHtml, $matches)) {
+        // Enhanced regex to capture parts with or without <a> tags and variations in spacing and symbols
+        if (preg_match_all('/[+]?[\s]*(\d+)[\s]*(?:Part[s]?)?[\s]*(?:<[^>]*>)?([\w\s]+)(?=<\/a>|<\/p>|<br>|\n|$)/i', $recipeHtml, $matches)) {
             foreach ($matches[2] as $index => $name) {
                 // Clean up the ingredient name
                 $name = trim(html_entity_decode(strip_tags($name)));
