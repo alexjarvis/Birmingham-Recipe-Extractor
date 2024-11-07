@@ -1,7 +1,7 @@
 <?php
 
 // Function to fetch and parse HTML content from a URL
-function fetchPageContent($url, $query): string
+function fetchInkRecipe($url, $query): string
 {
     // Initialize cURL
     $ch = curl_init();
@@ -32,12 +32,12 @@ function fetchPageContent($url, $query): string
     libxml_clear_errors();
 
     $xpath = new DOMXPath($dom);
-    $contentNode = $xpath->query($query);
+    $recipeNode = $xpath->query($query);
 
     // Process content with preserved <p> tags and <a> tags formatted as requested
-    $content = '';
-    if ($contentNode->length > 0) {
-        foreach ($contentNode[0]->childNodes as $child) {
+    $recipe = '';
+    if ($recipeNode->length > 0) {
+        foreach ($recipeNode[0]->childNodes as $child) {
             if ($child->nodeName === 'p') {
                 // Extract text content within each <p> element
                 $line = '';
@@ -48,12 +48,12 @@ function fetchPageContent($url, $query): string
                         $line .= $subChild->nodeValue . ' - ' . $subChild->getAttribute('href');
                     }
                 }
-                $content .= trim($line) . "\n";
+                $recipe .= trim($line) . "\n";
             }
         }
     }
 
-    return trim($content); // Remove any trailing whitespace
+    return trim($recipe); // Remove any trailing whitespace
 }
 
 // Load the main HTML file
@@ -94,7 +94,7 @@ foreach ($productNodes as $node) {
     $onSale = $onSaleNode->length > 0 ? 1 : 0;
 
     // Fetch additional content from the product URL
-    $recipe = $url ? fetchPageContent($url, "//div[contains(@class, 'metafield-rich_text_field')]") : '';
+    $recipe = $url ? fetchInkRecipe($url, "//div[contains(@class, 'metafield-rich_text_field')]") : '';
 
     $product = [
         'Name' => $name,
