@@ -1,7 +1,8 @@
 <?php
 
 // Function to fetch and parse HTML content from a URL
-function fetchPageContent($url, $query) {
+function fetchPageContent($url, $query): string
+{
     // Initialize cURL
     $ch = curl_init();
 
@@ -32,19 +33,27 @@ function fetchPageContent($url, $query) {
 
     $xpath = new DOMXPath($dom);
     $contentNode = $xpath->query($query);
-//    $content = $contentNode->length > 0 ? trim($contentNode[0]->nodeValue) : '';
 
-    // Use C14N to get the inner HTML with tags preserved
+    // Process content with preserved <p> tags and <a> tags formatted as requested
     $content = '';
     if ($contentNode->length > 0) {
         foreach ($contentNode[0]->childNodes as $child) {
-            $content .= $dom->saveHTML($child);
+            if ($child->nodeName === 'p') {
+                // Extract text content within each <p> element
+                $line = '';
+                foreach ($child->childNodes as $subChild) {
+                    if ($subChild->nodeName === '#text') {
+                        $line .= $subChild->nodeValue;
+                    } elseif ($subChild->nodeName === 'a') {
+                        $line .= $subChild->nodeValue . ' - ' . $subChild->getAttribute('href');
+                    }
+                }
+                $content .= trim($line) . "\n";
+            }
         }
     }
 
-    return $content;
-
-    return $content;
+    return trim($content); // Remove any trailing whitespace
 }
 
 // Load the main HTML file
