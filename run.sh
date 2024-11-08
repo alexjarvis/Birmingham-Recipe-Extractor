@@ -12,9 +12,15 @@ if ! node scrape.js; then
     exit 1
 fi
 
-echo "Running PHP extractor..."
+echo "Running recipe extraction..."
 if ! php recipe_extractor.php; then
-    echo "PHP extraction failed."
+    echo "Recipe extraction failed."
+    exit 1
+fi
+
+echo "Running table generation..."
+if ! php generate_table.php; then
+    echo "Table generation failed."
     exit 1
 fi
 
