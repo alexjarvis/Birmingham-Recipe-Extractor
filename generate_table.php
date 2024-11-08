@@ -37,29 +37,94 @@ function processProducts($products) {
         }
     }
 
+    // Sort enriched products by title
+    usort($enrichedProducts, fn($a, $b) => strcmp($a['title'], $b['title']));
+
     return [$enrichedProducts, $ingredientTotals, $productImages];
 }
 
-// Generate HTML for the table
+// Generate HTML header for the table
+function generateTableHeader($allIngredients, $productImages) {
+    $headerHtml = '<thead><tr><th>Product/Ingredients</th>';
+    foreach ($allIngredients as $ingredient) {
+        $ingredientUrl = "https://www.birminghampens.com/products/" . urlencode(strtolower(str_replace(' ', '-', $ingredient)));
+        $headerHtml .= '<th><a href="' . htmlspecialchars($ingredientUrl) . '" target="_blank">' . htmlspecialchars($ingredient);
+
+        if (isset($productImages[$ingredient])) {
+            $headerHtml .= '<img src="' . htmlspecialchars($productImages[$ingredient]) . '" alt="' . htmlspecialchars($ingredient) . '" class="ingredient-img">';
+        }
+
+        $headerHtml .= '</a></th>';
+    }
+    $headerHtml .= '</tr></thead>';
+    return $headerHtml;
+}
+
+// Generate HTML footer for Recipe Count and Quantity Count
+function generateTableFooter($allIngredients, $enrichedProducts, $ingredientTotals) {
+    $footerHtml = '<tfoot><tr><td>Recipe Count</td>';
+    foreach ($allIngredients as $ingredient) {
+        $recipeCount = count(array_filter($enrichedProducts, fn($product) => isset($product['recipe_components'][$ingredient])));
+        $footerHtml .= '<td>' . $recipeCount . '</td>';
+    }
+    $footerHtml .= '</tr><tr><td>Quantity Count</td>';
+    foreach ($allIngredients as $ingredient) {
+        $footerHtml .= '<td>' . ($ingredientTotals[$ingredient] ?? 0) . '</td>';
+    }
+    $footerHtml .= '</tr></tfoot>';
+    return $footerHtml;
+}
+
+// Generate HTML for the complete table
 function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages) {
     $generationDate = date('F j, Y');
     $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Birmingham Ink Recipes as of ' . $generationDate . '</title>';
     $html .= '<style>
-        body { font-family: Arial, sans-serif; }
+        body { font-family: Arial, sans-serif; margin: 20px; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 8px; text-align: center; vertical-align: middle; }
-        th { background-color: #f2f2f2; position: sticky; top: 0; cursor: pointer; }
+        th, td { padding: 8px; text-align: center; vertical-align: middle; border: 1px solid #ddd; }
+        th { background-color: #f2f2f2; cursor: pointer; position: sticky; top: 0; }
         th a { color: inherit; text-decoration: none; display: flex; align-items: center; flex-direction: column; }
         tbody tr:nth-child(even) { background-color: #f9f9f9; }
         tr:hover { background-color: #f1f1f1; }
-        tfoot { background-color: #e0e0e0; font-weight: bold; }
-        tfoot tr { background-color: #f2f2f2 }
+        tfoot { background-color: #f2f2f2; font-weight: bold; }
         .product-name { font-weight: bold; }
         .product-img { max-width: 60px; height: auto; margin-top: 5px; }
         .ingredient-img { max-width: 30px; height: auto; margin-top: 5px; }
         .sort-asc::after { content: " ▲"; }
         .sort-desc::after { content: " ▼"; }
-    </style>';
+    </style></head><body>';
+    $html .= '<header><h1>Birmingham Ink Recipes as of ' . $generationDate . '</h1></header>';
+    $html .= '<main><table>';
+
+    // Generate table header and footer
+    $html .= generateTableHeader($allIngredients, $productImages);
+
+    // Table body with product data
+    $html .= '<tbody>';
+    foreach ($enrichedProducts as $product) {
+        $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
+        $productImage = $productImages[$product['title']] ?? '';
+
+        $html .= '<tr><td><div class="product-name"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></div>';
+        if ($productImage) {
+            $html .= '<img src="' . htmlspecialchars($productImage) . '" alt="' . htmlspecialchars($product['title']) . '" class="product-img">';
+        }
+        $html .= '</td>';
+
+        foreach ($allIngredients as $ingredient) {
+            $html .= '<td>' . ($product['recipe_components'][$ingredient] ?? '') . '</td>';
+        }
+        $html .= '</tr>';
+    }
+    $html .= '</tbody>';
+
+    // Add footer with counts
+    $html .= generateTableFooter($allIngredients, $enrichedProducts, $ingredientTotals);
+    $html .= '</table></main>';
+
+    // Footer and script for table sorting
+    $html .= '<footer><p>&copy; ' . date('Y') . ' Birmingham Pens</p></footer>';
     $html .= '<script>
         document.addEventListener("DOMContentLoaded", function() {
             document.querySelectorAll("th").forEach((header, index) => {
@@ -88,55 +153,7 @@ function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $pr
             table.innerHTML = "";
             rows.forEach(row => table.appendChild(row));
         }
-    </script>';
-    $html .= '</head><body>';
-    $html .= '<header><h1>Birmingham Ink Recipes as of ' . $generationDate . '</h1></header>';
-    $html .= '<main><table><thead><tr><th>Product</th>';
-
-    // Ingredient headers with links and images
-    foreach ($allIngredients as $ingredient) {
-        $ingredientUrl = "https://www.birminghampens.com/products/" . urlencode(strtolower(str_replace(' ', '-', $ingredient)));
-        $html .= '<th><a href="' . htmlspecialchars($ingredientUrl) . '" target="_blank">' . htmlspecialchars($ingredient);
-
-        if (isset($productImages[$ingredient])) {
-            $html .= '<img src="' . htmlspecialchars($productImages[$ingredient]) . '" alt="' . htmlspecialchars($ingredient) . '" class="ingredient-img">';
-        }
-
-        $html .= '</a></th>';
-    }
-    $html .= '</tr></thead><tbody>';
-
-    // Product rows
-    foreach ($enrichedProducts as $product) {
-        $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
-        $productImage = $productImages[$product['title']] ?? '';
-
-        $html .= '<tr><td><div class="product-name"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></div>';
-        if ($productImage) {
-            $html .= '<img src="' . htmlspecialchars($productImage) . '" alt="' . htmlspecialchars($product['title']) . '" class="product-img">';
-        }
-        $html .= '</td>';
-
-        foreach ($allIngredients as $ingredient) {
-            $html .= '<td>' . ($product['recipe_components'][$ingredient] ?? '') . '</td>';
-        }
-        $html .= '</tr>';
-    }
-
-    // Footer with Recipe Count and Quantity Count
-    $html .= '</tbody><tfoot>';
-    $html .= '<tr><td>Recipe Count</td>';
-    foreach ($allIngredients as $ingredient) {
-        $recipeCount = count(array_filter($enrichedProducts, fn($product) => isset($product['recipe_components'][$ingredient])));
-        $html .= '<td>' . $recipeCount . '</td>';
-    }
-    $html .= '</tr><tr><td>Quantity Count</td>';
-    foreach ($allIngredients as $ingredient) {
-        $html .= '<td>' . ($ingredientTotals[$ingredient] ?? 0) . '</td>';
-    }
-    $html .= '</tr></tfoot></table></main>';
-    $html .= '<footer><p>&copy; ' . date('Y') . ' Birmingham Pens</p></footer></body></html>';
-
+    </script></body></html>';
     return $html;
 }
 
@@ -151,6 +168,9 @@ sort($allIngredients);
 // Generate and save the HTML file
 $html = generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages);
 $outputFile = 'output/products_table.html';
-file_put_contents($outputFile, $html);
 
-echo "HTML table written to $outputFile\n";
+if (file_put_contents($outputFile, $html) !== false) {
+    echo "HTML table written to $outputFile\n";
+} else {
+    echo "Failed to write to $outputFile\n";
+}
