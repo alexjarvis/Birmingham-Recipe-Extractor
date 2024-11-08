@@ -9,59 +9,68 @@ if ($products === null || !is_array($products)) {
     die("Invalid or missing products_enriched.json data.\n");
 }
 
-// Collect all unique ingredients to form table columns
-$allIngredients = [];
-$filteredProducts = [];
+$enrichedProducts = [];
+$ingredientTotals = [];
 
-// Filter products with recipes and collect unique ingredients
+// Collect all unique ingredients and filter products with recipes
 foreach ($products as $product) {
     if (!empty($product['recipe_components']) && is_array($product['recipe_components'])) {
-        $filteredProducts[] = $product;
+        $enrichedProducts[] = $product;
         foreach ($product['recipe_components'] as $ingredient => $quantity) {
-            $allIngredients[$ingredient] = true;
+            $ingredientTotals[$ingredient] = ($ingredientTotals[$ingredient] ?? 0) + $quantity;
         }
     }
 }
 
-// Sort ingredients alphabetically
-$allIngredients = array_keys($allIngredients);
+// Sort ingredients and products alphabetically
+$allIngredients = array_keys($ingredientTotals);
 sort($allIngredients);
+usort($enrichedProducts, fn($a, $b) => strcmp($a['title'], $b['title']));
 
-// Sort products alphabetically by title
-usort($filteredProducts, function($a, $b) {
-    return strcmp($a['title'], $b['title']);
-});
-
-// Generate the HTML table
+// Generate HTML5 structure and style
 $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Product Recipe Table</title>';
-$html .= '<style>table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #ddd; padding: 8px; text-align: center; } th { background-color: #f2f2f2; }</style></head><body>';
-$html .= '<h1>Product Recipes</h1>';
-$html .= '<table><thead><tr><th>Product</th>';
+$html .= '<style>
+    body { font-family: Arial, sans-serif; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background-color: #f2f2f2; }
+    tr:nth-child(even) { background-color: #f9f9f9; }
+    tr:hover { background-color: #f1f1f1; }
+    tfoot { background-color: #e0e0e0; font-weight: bold; }
+</style></head><body>';
+$html .= '<header><h1>Product Recipes</h1></header>';
+$html .= '<main><table><thead><tr><th>Product</th>';
 
-// Add column headers for each unique ingredient
+// Column headers for each unique ingredient
 foreach ($allIngredients as $ingredient) {
     $html .= '<th>' . htmlspecialchars($ingredient) . '</th>';
 }
 $html .= '</tr></thead><tbody>';
 
-// Add rows for each product with a recipe
-foreach ($filteredProducts as $product) {
+// Rows for each product with recipe components
+foreach ($enrichedProducts as $product) {
     $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
     $html .= '<tr><td><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></td>';
 
-    // Add cells for each ingredient; if product has quantity, add it; otherwise, leave empty
+    // Populate cells for ingredients with quantities, linking to ingredient pages
     foreach ($allIngredients as $ingredient) {
         if (isset($product['recipe_components'][$ingredient])) {
-            $html .= '<td>' . htmlspecialchars($product['recipe_components'][$ingredient]) . '</td>';
+            $ingredientUrl = "https://www.birminghampens.com/products/" . urlencode(strtolower(str_replace(' ', '-', $ingredient)));
+            $html .= '<td><a href="' . htmlspecialchars($ingredientUrl) . '" target="_blank">' . htmlspecialchars($product['recipe_components'][$ingredient]) . '</a></td>';
         } else {
             $html .= '<td></td>';
         }
     }
-
     $html .= '</tr>';
 }
 
-$html .= '</tbody></table></body></html>';
+// Footer row for total counts of each ingredient
+$html .= '</tbody><tfoot><tr><td>Total Count</td>';
+foreach ($allIngredients as $ingredient) {
+    $html .= '<td>' . ($ingredientTotals[$ingredient] ?? 0) . '</td>';
+}
+$html .= '</tr></tfoot></table></main>';
+$html .= '<footer><p>&copy; ' . date('Y') . ' Birmingham Pens</p></footer></body></html>';
 
 // Write the HTML output to a file
 $outputFile = 'output/products_table.html';
