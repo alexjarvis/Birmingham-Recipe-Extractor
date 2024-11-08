@@ -11,19 +11,21 @@ if ($products === null || !is_array($products)) {
 
 $enrichedProducts = [];
 $ingredientTotals = [];
-$ingredientImages = []; // Store images for each ingredient
+$productImages = []; // Maps product titles to their main images
 
-// Collect all unique ingredients, filter products with recipes, and find images for ingredients
+// Step 1: Build the $productImages array and collect enriched products with ingredients
 foreach ($products as $product) {
+    // Assign the main image of the product to the $productImages array by title
+    if (!empty($product['images'][0]['src'])) {
+        $productImages[$product['title']] = $product['images'][0]['src'];
+    }
+
     if (!empty($product['recipe_components']) && is_array($product['recipe_components'])) {
         $enrichedProducts[] = $product;
+
+        // Collect ingredient quantities
         foreach ($product['recipe_components'] as $ingredient => $quantity) {
             $ingredientTotals[$ingredient] = ($ingredientTotals[$ingredient] ?? 0) + $quantity;
-
-            // Store the first product image we find for the ingredient if not already stored
-            if (!isset($ingredientImages[$ingredient]) && !empty($product['images'])) {
-                $ingredientImages[$ingredient] = $product['images'][0]['src'];
-            }
         }
     }
 }
@@ -92,9 +94,9 @@ foreach ($allIngredients as $ingredient) {
     $ingredientUrl = "https://www.birminghampens.com/products/" . urlencode(strtolower(str_replace(' ', '-', $ingredient)));
     $html .= '<th><a href="' . htmlspecialchars($ingredientUrl) . '" target="_blank">' . htmlspecialchars($ingredient);
 
-    // Display the ingredient image in the header if available
-    if (isset($ingredientImages[$ingredient])) {
-        $html .= '<img src="' . htmlspecialchars($ingredientImages[$ingredient]) . '" alt="' . htmlspecialchars($ingredient) . '" class="ingredient-img">';
+    // Display the ingredient image in the header if available in the $productImages array
+    if (isset($productImages[$ingredient])) {
+        $html .= '<img src="' . htmlspecialchars($productImages[$ingredient]) . '" alt="' . htmlspecialchars($ingredient) . '" class="ingredient-img">';
     }
 
     $html .= '</a></th>';
@@ -104,7 +106,7 @@ $html .= '</tr></thead><tbody>';
 // Rows for each product with recipe components
 foreach ($enrichedProducts as $product) {
     $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
-    $productImage = !empty($product['images']) ? $product['images'][0]['src'] : ''; // Use the first image if available
+    $productImage = $productImages[$product['title']] ?? ''; // Get product image from the $productImages array
 
     $html .= '<tr><td>';
     $html .= '<div class="product-name"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></div>';
