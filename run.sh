@@ -6,9 +6,9 @@ if ! npm install; then
     exit 1
 fi
 
-echo "Running scraper with Node.js..."
-if ! node scrape.js; then
-    echo "Scraping failed."
+echo "Running fetch products..."
+if ! node fetch_products.js; then
+    echo "fetch products failed."
     exit 1
 fi
 
