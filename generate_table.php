@@ -47,12 +47,13 @@ function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $pr
     $html .= '<style>
         body { font-family: Arial, sans-serif; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; vertical-align: top; }
+        th, td { padding: 8px; text-align: center; vertical-align: middle; }
         th { background-color: #f2f2f2; position: sticky; top: 0; cursor: pointer; }
         th a { color: inherit; text-decoration: none; display: flex; align-items: center; flex-direction: column; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
+        tbody tr:nth-child(even) { background-color: #f9f9f9; }
         tr:hover { background-color: #f1f1f1; }
         tfoot { background-color: #e0e0e0; font-weight: bold; }
+        tfoot tr { background-color: #f2f2f2 }
         .product-name { font-weight: bold; }
         .product-img { max-width: 60px; height: auto; margin-top: 5px; }
         .ingredient-img { max-width: 30px; height: auto; margin-top: 5px; }
