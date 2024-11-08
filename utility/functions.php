@@ -77,7 +77,7 @@ function fetchAllProducts($config): array {
       $page++;
     }
     catch (Exception $e) {
-      echo "Error fetching products: " . $e->getMessage() . "\n";
+      echo "Error fetching products: " . $e->getMessage() . PHP_EOL;
       break;
     }
   }
@@ -112,7 +112,7 @@ function fetchPage($page, $config): array {
     }
     catch (Exception $e) {
       $retries++;
-      echo "Attempt $retries failed for page $page: " . $e->getMessage() . "\n";
+      echo "Attempt $retries failed for page $page: " . $e->getMessage() . PHP_EOL;
       if ($retries >= $config['FETCH_MAX_RETRIES']) {
         throw new Exception("Max retries reached for page $page: " . $e->getMessage());
       }
@@ -148,7 +148,7 @@ function formatNode(DOMNode $node, int $level = 0): string {
     if ($child->nodeType === XML_TEXT_NODE) {
       $text = trim($child->textContent);
       if ($text !== '') {
-        $output .= $indent . htmlspecialchars($text) . "\n";
+        $output .= $indent . htmlspecialchars($text) . PHP_EOL;
       }
     }
     elseif ($child->nodeType === XML_ELEMENT_NODE) {
@@ -161,16 +161,16 @@ function formatNode(DOMNode $node, int $level = 0): string {
 
       // Check if the element is self-closing
       if (in_array($child->nodeName, $selfClosingTags)) {
-        $output .= " />\n"; // Self-close the tag
+        $output .= " />" . PHP_EOL; // Self-close the tag
       }
       else {
         // Close the opening tag and process children if any
         $output .= ">";
         if ($child->hasChildNodes()) {
-          $output .= "\n" . formatNode($child, $level + 1) . $indent . "</" . $child->nodeName . ">\n";
+          $output .= PHP_EOL . formatNode($child, $level + 1) . $indent . "</" . $child->nodeName . ">" . PHP_EOL;
         }
         else {
-          $output .= "</" . $child->nodeName . ">\n";
+          $output .= "</" . $child->nodeName . ">" . PHP_EOL;
         }
       }
     }

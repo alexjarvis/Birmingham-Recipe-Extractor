@@ -13,7 +13,7 @@ try {
 
   // Check if data is valid
   if (!is_array($products)) {
-    die("Invalid products.json data.\n");
+    die("Invalid products.json data." . PHP_EOL);
   }
 
   $enrichedProducts = [];

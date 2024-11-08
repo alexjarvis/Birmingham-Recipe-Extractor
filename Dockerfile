@@ -14,5 +14,4 @@ WORKDIR /app
 # Copy the project files into the container
 COPY . .
 
-# Run the shell script, which will execute Node.js and PHP scripts
-CMD ["php /app/run.php"]
+CMD ["php", "/app/run.php"]
