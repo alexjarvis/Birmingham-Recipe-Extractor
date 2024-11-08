@@ -22,6 +22,18 @@ if ($products === null || !is_array($products)) {
 
 $enrichedProducts = [];
 
+// Function to correct known typos in recipe components
+function correctTypos($name) {
+    $corrections = [
+        'Saltwater Taffy' => 'Salt Water Taffy',
+        'Sterling Siver' => 'Sterling Silver',
+        'Tiger Lil' => 'Tiger Lily',
+        'Teaberry Ice Crea' => 'Teaberry Ice Cream'
+    ];
+
+    return $corrections[$name] ?? $name; // Replace if found, otherwise return original
+}
+
 foreach ($products as $product) {
     // Extract basic information
     $price = $product['variants'][0]['price'];
@@ -91,7 +103,8 @@ foreach ($products as $product) {
     // Store the original recipe HTML
     $enrichedProduct['recipe'] = trim($recipeHtml);
 
-    // If we have recipe HTML, parse it for components
+
+    // In the main processing loop where you store recipe components
     if ($recipeHtml) {
         // Normalize non-breaking spaces
         $recipeHtml = str_replace("\xc2\xa0", ' ', $recipeHtml);
@@ -99,10 +112,9 @@ foreach ($products as $product) {
         // Enhanced regex to capture parts with or without <a> tags and variations in spacing and symbols
         if (preg_match_all('/[+]?[\s]*(\d+)[\s]*(?:Part[s]?)?[\s]*(?:<[^>]*>)?([\w\s]+)(?=<\/a>|<\/p>|<br>|\n|$)/i', $recipeHtml, $matches)) {
             foreach ($matches[2] as $index => $name) {
-                // Clean up the ingredient name
-                $name = trim(html_entity_decode(strip_tags($name)));
-                $quantity = (int) $matches[1][$index];  // Extract the quantity
-                $recipeComponents[$name] = $quantity;  // Store in components array
+                $name = correctTypos(trim(html_entity_decode(strip_tags($name)))); // Apply typo correction
+                $quantity = (int) $matches[1][$index];
+                $recipeComponents[$name] = $quantity;
             }
         }
     }
