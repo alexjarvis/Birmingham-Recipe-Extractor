@@ -27,36 +27,78 @@ $allIngredients = array_keys($ingredientTotals);
 sort($allIngredients);
 usort($enrichedProducts, fn($a, $b) => strcmp($a['title'], $b['title']));
 
-// Generate HTML5 structure and style
-$html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Product Recipe Table</title>';
+// Current date for the title
+$generationDate = date('F j, Y');
+
+// Generate HTML5 structure and style with JavaScript for sorting
+$html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Birmingham Ink Recipes - as of ' . $generationDate . '</title>';
 $html .= '<style>
     body { font-family: Arial, sans-serif; }
     table { width: 100%; border-collapse: collapse; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    th { background-color: #f2f2f2; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; vertical-align: top; }
+    th { background-color: #f2f2f2; position: sticky; top: 0; cursor: pointer; }
+    th a { color: inherit; text-decoration: none; }
     tr:nth-child(even) { background-color: #f9f9f9; }
     tr:hover { background-color: #f1f1f1; }
     tfoot { background-color: #e0e0e0; font-weight: bold; }
-</style></head><body>';
-$html .= '<header><h1>Product Recipes</h1></header>';
+    .product-name { font-weight: bold; margin-bottom: 8px; }
+    .product-img { max-width: 80px; height: auto; margin-bottom: 8px; }
+</style>';
+$html .= '<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll("th").forEach((header, index) => {
+            header.addEventListener("click", () => sortTable(index));
+        });
+    });
+    function sortTable(columnIndex) {
+        const table = document.querySelector("table tbody");
+        const rows = Array.from(table.rows);
+        const isAscending = table.getAttribute("data-sort-dir") === "asc";
+        
+        rows.sort((a, b) => {
+            const aText = a.cells[columnIndex].textContent.trim();
+            const bText = b.cells[columnIndex].textContent.trim();
+            
+            return isAscending 
+                ? aText.localeCompare(bText, undefined, {numeric: true})
+                : bText.localeCompare(aText, undefined, {numeric: true});
+        });
+
+        table.innerHTML = "";
+        rows.forEach(row => table.appendChild(row));
+        table.setAttribute("data-sort-dir", isAscending ? "desc" : "asc");
+    }
+</script>';
+$html .= '</head><body>';
+$html .= '<header><h1>Birmingham Ink Recipes - as of ' . $generationDate . '</h1></header>';
 $html .= '<main><table><thead><tr><th>Product</th>';
 
-// Column headers for each unique ingredient
+// Column headers for each unique ingredient with links
 foreach ($allIngredients as $ingredient) {
-    $html .= '<th>' . htmlspecialchars($ingredient) . '</th>';
+    $ingredientUrl = "https://www.birminghampens.com/products/" . urlencode(strtolower(str_replace(' ', '-', $ingredient)));
+    $html .= '<th><a href="' . htmlspecialchars($ingredientUrl) . '" target="_blank">' . htmlspecialchars($ingredient) . '</a></th>';
 }
-$html .= '</tr></thead><tbody>';
+$html .= '</tr></thead><tbody data-sort-dir="asc">';
 
 // Rows for each product with recipe components
 foreach ($enrichedProducts as $product) {
     $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
-    $html .= '<tr><td><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></td>';
+    $productImage = !empty($product['images']) ? $product['images'][0]['src'] : ''; // Use the first image if available
 
-    // Populate cells for ingredients with quantities, linking to ingredient pages
+    $html .= '<tr><td>';
+    $html .= '<div class="product-name"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></div>';
+
+    // Embed product image if available
+    if ($productImage) {
+        $html .= '<img src="' . htmlspecialchars($productImage) . '" alt="' . htmlspecialchars($product['title']) . '" class="product-img">';
+    }
+
+    $html .= '</td>';
+
+    // Populate cells for ingredients with quantities
     foreach ($allIngredients as $ingredient) {
         if (isset($product['recipe_components'][$ingredient])) {
-            $ingredientUrl = "https://www.birminghampens.com/products/" . urlencode(strtolower(str_replace(' ', '-', $ingredient)));
-            $html .= '<td><a href="' . htmlspecialchars($ingredientUrl) . '" target="_blank">' . htmlspecialchars($product['recipe_components'][$ingredient]) . '</a></td>';
+            $html .= '<td>' . htmlspecialchars($product['recipe_components'][$ingredient]) . '</td>';
         } else {
             $html .= '<td></td>';
         }
