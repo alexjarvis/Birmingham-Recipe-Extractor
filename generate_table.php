@@ -141,7 +141,7 @@ try {
 
     // Generate and save the HTML file
     $html = generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages);
-    $outputFile = 'output/products_table.html';
+    $outputFile = 'output/recipes.html';
 
     if (file_put_contents($outputFile, $html) !== false) {
         echo "HTML table written to $outputFile\n";
