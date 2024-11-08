@@ -15,4 +15,4 @@ WORKDIR /app
 COPY . .
 
 # Run the shell script, which will execute Node.js and PHP scripts
-CMD ["/app/run.sh"]
+CMD ["php /app/run.php"]
