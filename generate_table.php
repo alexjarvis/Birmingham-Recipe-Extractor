@@ -11,13 +11,19 @@ if ($products === null || !is_array($products)) {
 
 $enrichedProducts = [];
 $ingredientTotals = [];
+$ingredientImages = []; // Store images for each ingredient
 
-// Collect all unique ingredients and filter products with recipes
+// Collect all unique ingredients, filter products with recipes, and find images for ingredients
 foreach ($products as $product) {
     if (!empty($product['recipe_components']) && is_array($product['recipe_components'])) {
         $enrichedProducts[] = $product;
         foreach ($product['recipe_components'] as $ingredient => $quantity) {
             $ingredientTotals[$ingredient] = ($ingredientTotals[$ingredient] ?? 0) + $quantity;
+
+            // Store the first product image we find for the ingredient if not already stored
+            if (!isset($ingredientImages[$ingredient]) && !empty($product['images'])) {
+                $ingredientImages[$ingredient] = $product['images'][0]['src'];
+            }
         }
     }
 }
@@ -31,18 +37,19 @@ usort($enrichedProducts, fn($a, $b) => strcmp($a['title'], $b['title']));
 $generationDate = date('F j, Y');
 
 // Generate HTML5 structure and style with JavaScript for sorting
-$html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Birmingham Ink Recipes - as of ' . $generationDate . '</title>';
+$html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Birmingham Ink Recipes as of ' . $generationDate . '</title>';
 $html .= '<style>
     body { font-family: Arial, sans-serif; }
     table { width: 100%; border-collapse: collapse; }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: center; vertical-align: top; }
     th { background-color: #f2f2f2; position: sticky; top: 0; cursor: pointer; }
-    th a { color: inherit; text-decoration: none; }
+    th a { color: inherit; text-decoration: none; display: flex; align-items: center; flex-direction: column; }
     tr:nth-child(even) { background-color: #f9f9f9; }
     tr:hover { background-color: #f1f1f1; }
     tfoot { background-color: #e0e0e0; font-weight: bold; }
     .product-name { font-weight: bold; }
-    .product-img { max-width: 100px; height: auto; margin-top: 10px; }
+    .product-img { max-width: 60px; height: auto; margin-top: 5px; }
+    .ingredient-img { max-width: 30px; height: auto; margin-top: 5px; }
     .sort-asc::after { content: " ▲"; }
     .sort-desc::after { content: " ▼"; }
 </style>';
@@ -56,8 +63,7 @@ $html .= '<script>
     function sortTable(columnIndex, header) {
         const table = document.querySelector("table tbody");
         const rows = Array.from(table.rows);
-        const isAscending = header.classList.toggle("sort-asc", !header.classList.contains("sort-asc"));
-        header.classList.toggle("sort-desc", !isAscending);
+        const isAscending = header.classList.toggle("sort-desc", !header.classList.contains("sort-desc"));
         
         // Remove sort classes from other headers
         document.querySelectorAll("th").forEach(th => {
@@ -69,8 +75,8 @@ $html .= '<script>
             const bText = b.cells[columnIndex].textContent.trim();
             
             return isAscending 
-                ? aText.localeCompare(bText, undefined, {numeric: true})
-                : bText.localeCompare(aText, undefined, {numeric: true});
+                ? bText.localeCompare(aText, undefined, {numeric: true})
+                : aText.localeCompare(bText, undefined, {numeric: true});
         });
 
         table.innerHTML = "";
@@ -78,15 +84,22 @@ $html .= '<script>
     }
 </script>';
 $html .= '</head><body>';
-$html .= '<header><h1>Birmingham Ink Recipes - as of ' . $generationDate . '</h1></header>';
+$html .= '<header><h1>Birmingham Ink Recipes as of ' . $generationDate . '</h1></header>';
 $html .= '<main><table><thead><tr><th>Product</th>';
 
-// Column headers for each unique ingredient with links
+// Column headers for each unique ingredient with links and images
 foreach ($allIngredients as $ingredient) {
     $ingredientUrl = "https://www.birminghampens.com/products/" . urlencode(strtolower(str_replace(' ', '-', $ingredient)));
-    $html .= '<th><a href="' . htmlspecialchars($ingredientUrl) . '" target="_blank">' . htmlspecialchars($ingredient) . '</a></th>';
+    $html .= '<th><a href="' . htmlspecialchars($ingredientUrl) . '" target="_blank">' . htmlspecialchars($ingredient);
+
+    // Display the ingredient image in the header if available
+    if (isset($ingredientImages[$ingredient])) {
+        $html .= '<img src="' . htmlspecialchars($ingredientImages[$ingredient]) . '" alt="' . htmlspecialchars($ingredient) . '" class="ingredient-img">';
+    }
+
+    $html .= '</a></th>';
 }
-$html .= '</tr></thead><tbody data-sort-dir="asc">';
+$html .= '</tr></thead><tbody>';
 
 // Rows for each product with recipe components
 foreach ($enrichedProducts as $product) {
@@ -96,6 +109,13 @@ foreach ($enrichedProducts as $product) {
     $html .= '<tr><td>';
     $html .= '<div class="product-name"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></div>';
 
+    // Display product image below the product name
+    if ($productImage) {
+        $html .= '<img src="' . htmlspecialchars($productImage) . '" alt="' . htmlspecialchars($product['title']) . '" class="product-img">';
+    }
+
+    $html .= '</td>';
+
     // Populate cells for ingredients with quantities
     foreach ($allIngredients as $ingredient) {
         if (isset($product['recipe_components'][$ingredient])) {
@@ -103,11 +123,6 @@ foreach ($enrichedProducts as $product) {
         } else {
             $html .= '<td></td>';
         }
-    }
-
-    // Display product image at the bottom of the row
-    if ($productImage) {
-        $html .= '<td colspan="' . (count($allIngredients) + 1) . '"><img src="' . htmlspecialchars($productImage) . '" alt="' . htmlspecialchars($product['title']) . '" class="product-img"></td>';
     }
 
     $html .= '</tr>';
