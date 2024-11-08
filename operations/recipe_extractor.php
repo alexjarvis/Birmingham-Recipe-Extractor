@@ -12,7 +12,7 @@ try {
   $products = json_decode($jsonData, TRUE);
 
   // Check if data is valid
-  if ($products === NULL || !is_array($products)) {
+  if (!is_array($products)) {
     die("Invalid products.json data.\n");
   }
 

@@ -123,14 +123,16 @@ function correctTypos($name): string {
   return $corrections[$name] ?? $name; // Replace if found, otherwise return original
 }
 
-// Load and validate JSON data
+/**
+ * Load and validate JSON data
+ *
+ * @param $filePath
+ *
+ * @return array
+ * @throws \Exception
+ */
 function loadProducts($filePath): array {
-  try {
-    checkInputFile($filePath);
-  }
-  catch (Exception $e) {
-    throw $e;
-  }
+  checkInputFile($filePath);
 
   $jsonData = file_get_contents($filePath);
   $products = json_decode($jsonData, TRUE);
@@ -142,7 +144,13 @@ function loadProducts($filePath): array {
   return $products;
 }
 
-// Process products to build necessary data structures
+/**
+ * Process products to build necessary data structures
+ *
+ * @param $products
+ *
+ * @return array
+ */
 function processProducts($products): array {
   $enrichedProducts = [];
   $ingredientTotals = [];
@@ -169,7 +177,14 @@ function processProducts($products): array {
   return [$enrichedProducts, $ingredientTotals, $productImages];
 }
 
-// Generate HTML header for the table
+/**
+ * Generate HTML header for the table
+ *
+ * @param $allIngredients
+ * @param $productImages
+ *
+ * @return string
+ */
 function generateTableHeader($allIngredients, $productImages): string {
   $headerHtml = '<thead><tr><th>Product/Ingredients</th>';
   foreach ($allIngredients as $ingredient) {
@@ -186,7 +201,14 @@ function generateTableHeader($allIngredients, $productImages): string {
   return $headerHtml;
 }
 
-// Generate footer row with counts
+/**
+ * Generate footer row with counts
+ *
+ * @param $label
+ * @param $data
+ *
+ * @return string
+ */
 function generateFooterRow($label, $data): string {
   $rowHtml = "<tr><td>$label</td>";
   foreach ($data as $value) {
@@ -196,7 +218,15 @@ function generateFooterRow($label, $data): string {
   return $rowHtml;
 }
 
-// Generate HTML footer for Recipe Count and Quantity Count
+/**
+ * Generate HTML footer for Recipe Count and Quantity Count
+ *
+ * @param $allIngredients
+ * @param $enrichedProducts
+ * @param $ingredientTotals
+ *
+ * @return string
+ */
 function generateTableFooter($allIngredients, $enrichedProducts, $ingredientTotals): string {
   $footerHtml = '<tfoot>';
 
@@ -214,7 +244,16 @@ function generateTableFooter($allIngredients, $enrichedProducts, $ingredientTota
   return $footerHtml;
 }
 
-// Generate HTML for the complete table
+/**
+ * Generate HTML for the complete table
+ *
+ * @param $enrichedProducts
+ * @param $allIngredients
+ * @param $ingredientTotals
+ * @param $productImages
+ *
+ * @return string
+ */
 function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages): string {
   $generationDate = date('F j, Y');
   $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Birmingham Ink Recipes as of ' . $generationDate . '</title>';
