@@ -6,6 +6,9 @@ require_once(__DIR__ . '/../utility/functions.php');
 // Main execution
 try {
   global $config;
+
+  checkInputFile($config['ENRICHED_PRODUCTS_FILE']);
+
   $products = loadProducts($config['ENRICHED_PRODUCTS_FILE']);
   [
     $enrichedProducts,
@@ -17,10 +20,14 @@ try {
   $allIngredients = array_keys($ingredientTotals);
   sort($allIngredients);
 
-  // Generate and save the HTML file
+  // Generate the HTML content
   $html = generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages);
 
-  if (file_put_contents($config['TABLE_FILE'], $html) !== FALSE) {
+  // Prettify the HTML output
+  $prettyHtml = prettifyHTML($html);
+
+  // Save the prettified HTML file
+  if (file_put_contents($config['TABLE_FILE'], $prettyHtml) !== FALSE) {
     echo "HTML table written to " . $config['TABLE_FILE'] . PHP_EOL;
   }
   else {

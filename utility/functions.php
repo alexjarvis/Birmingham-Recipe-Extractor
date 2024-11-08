@@ -294,3 +294,72 @@ function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $pr
   $html .= '</body></html>';
   return $html;
 }
+
+/**
+ * Recursively formats HTML elements with indentation, handling self-closing
+ * tags.
+ *
+ * @param DOMNode $node
+ * @param int $level
+ *
+ * @return string
+ */
+function formatNode(DOMNode $node, int $level = 0): string {
+  $output = "";
+  $indent = str_repeat("  ", $level); // 2 spaces per level of indentation
+  $selfClosingTags = [
+    'img',
+    'br',
+    'meta',
+    'input',
+    'link',
+    'hr',
+  ]; // Define common self-closing tags
+
+  foreach ($node->childNodes as $child) {
+    if ($child->nodeType === XML_TEXT_NODE) {
+      $text = trim($child->textContent);
+      if ($text !== '') {
+        $output .= $indent . htmlspecialchars($text) . "\n";
+      }
+    }
+    elseif ($child->nodeType === XML_ELEMENT_NODE) {
+      $output .= $indent . "<" . $child->nodeName;
+
+      // Add attributes
+      foreach ($child->attributes as $attr) {
+        $output .= " " . $attr->nodeName . '="' . htmlspecialchars($attr->nodeValue) . '"';
+      }
+
+      // Check if the element is self-closing
+      if (in_array($child->nodeName, $selfClosingTags)) {
+        $output .= " />\n"; // Self-close the tag
+      }
+      else {
+        // Close the opening tag and process children if any
+        $output .= ">";
+        if ($child->hasChildNodes()) {
+          $output .= "\n" . formatNode($child, $level + 1) . $indent . "</" . $child->nodeName . ">\n";
+        }
+        else {
+          $output .= "</" . $child->nodeName . ">\n";
+        }
+      }
+    }
+  }
+
+  return $output;
+}
+
+/**
+ * Prettify HTML by converting it into properly indented format.
+ *
+ * @param string $html
+ *
+ * @return string
+ */
+function prettifyHTML(string $html): string {
+  $dom = new DOMDocument('1.0', 'UTF-8');
+  @$dom->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+  return formatNode($dom->documentElement);
+}
