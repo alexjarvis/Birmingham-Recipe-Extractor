@@ -130,10 +130,21 @@ foreach ($enrichedProducts as $product) {
     $html .= '</tr>';
 }
 
-// Footer row for total counts of each ingredient
-$html .= '</tbody><tfoot><tr><td>Total Count</td>';
+// Footer row for Recipe Count / Quantity Count of each ingredient
+$html .= '</tbody><tfoot><tr><td>Recipe Count / Quantity Count</td>';
 foreach ($allIngredients as $ingredient) {
-    $html .= '<td>' . ($ingredientTotals[$ingredient] ?? 0) . '</td>';
+    // Calculate Recipe Count and Quantity Count for each ingredient
+    $recipeCount = 0;
+    $quantityCount = $ingredientTotals[$ingredient] ?? 0;
+
+    foreach ($enrichedProducts as $product) {
+        if (isset($product['recipe_components'][$ingredient])) {
+            $recipeCount++;
+        }
+    }
+
+    // Display Recipe Count / Quantity Count
+    $html .= '<td>' . $recipeCount . ' / ' . $quantityCount . '</td>';
 }
 $html .= '</tr></tfoot></table></main>';
 $html .= '<footer><p>&copy; ' . date('Y') . ' Birmingham Pens</p></footer></body></html>';
