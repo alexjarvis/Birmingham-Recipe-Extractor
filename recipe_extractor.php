@@ -109,12 +109,16 @@ foreach ($products as $product) {
         // Normalize non-breaking spaces
         $recipeHtml = str_replace("\xc2\xa0", ' ', $recipeHtml);
 
-        // Enhanced regex to capture parts with or without <a> tags and variations in spacing and symbols
-        if (preg_match_all('/[+]?[\s]*(\d+)[\s]*(?:Part[s]?)?[\s]*(?:<[^>]*>)?([\w\s]+)(?=<\/a>|<\/p>|<br>|\n|$)/i', $recipeHtml, $matches)) {
-            foreach ($matches[2] as $index => $name) {
-                $name = correctTypos(trim(html_entity_decode(strip_tags($name)))); // Apply typo correction
-                $quantity = (int) $matches[1][$index];
-                $recipeComponents[$name] = $quantity;
+        // Enhanced regex pattern to capture all possible formats
+        if (preg_match_all('/(?:<strong>\s*(\d+)\s*<\/strong>\s*|\+?\s*(\d+)\s*)\s*parts?\s*(?:<a[^>]*>)?\s*([^<\n]+?)(?:<\/a>)?\s*(?=<\/p>|<br>|$)/i', $recipeHtml, $matches)) {
+            foreach ($matches[3] as $index => $name) {
+                // Use the first non-empty quantity from the matches
+                $quantity = (int) ($matches[1][$index] ?: $matches[2][$index]);
+
+                // Clean up the ingredient name
+                $name = correctTypos(trim(html_entity_decode(strip_tags($name))));
+
+                $recipeComponents[$name] = $quantity;  // Store in components array
             }
         }
     }
