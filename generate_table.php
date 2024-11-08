@@ -11,14 +11,26 @@ if ($products === null || !is_array($products)) {
 
 // Collect all unique ingredients to form table columns
 $allIngredients = [];
+$filteredProducts = [];
+
+// Filter products with recipes and collect unique ingredients
 foreach ($products as $product) {
-    if (isset($product['recipe_components']) && is_array($product['recipe_components'])) {
+    if (!empty($product['recipe_components']) && is_array($product['recipe_components'])) {
+        $filteredProducts[] = $product;
         foreach ($product['recipe_components'] as $ingredient => $quantity) {
             $allIngredients[$ingredient] = true;
         }
     }
 }
-$allIngredients = array_keys($allIngredients); // Extract ingredient names as unique keys
+
+// Sort ingredients alphabetically
+$allIngredients = array_keys($allIngredients);
+sort($allIngredients);
+
+// Sort products alphabetically by title
+usort($filteredProducts, function($a, $b) {
+    return strcmp($a['title'], $b['title']);
+});
 
 // Generate the HTML table
 $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Product Recipe Table</title>';
@@ -32,9 +44,10 @@ foreach ($allIngredients as $ingredient) {
 }
 $html .= '</tr></thead><tbody>';
 
-// Add rows for each product
-foreach ($products as $product) {
-    $html .= '<tr><td>' . htmlspecialchars($product['title']) . '</td>';
+// Add rows for each product with a recipe
+foreach ($filteredProducts as $product) {
+    $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
+    $html .= '<tr><td><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></td>';
 
     // Add cells for each ingredient; if product has quantity, add it; otherwise, leave empty
     foreach ($allIngredients as $ingredient) {
