@@ -12,7 +12,7 @@ if (!is_dir($outputDir)) {
 }
 
 // Load JSON file containing products
-$jsonData = file_get_contents('products.json');
+$jsonData = file_get_contents($outputDir . '/products.json');
 $products = json_decode($jsonData, true);
 
 // Check if data is valid
@@ -134,4 +134,4 @@ foreach ($products as $product) {
 // Write the enriched data to products_enriched.json
 file_put_contents('output/products_enriched.json', json_encode($enrichedProducts, JSON_PRETTY_PRINT));
 
-echo "Enriched data written to products_enriched.json\n";
+echo "Enriched data written to output/products_enriched.json\n";
