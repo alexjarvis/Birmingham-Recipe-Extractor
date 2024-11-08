@@ -41,19 +41,28 @@ $html .= '<style>
     tr:nth-child(even) { background-color: #f9f9f9; }
     tr:hover { background-color: #f1f1f1; }
     tfoot { background-color: #e0e0e0; font-weight: bold; }
-    .product-name { font-weight: bold; margin-bottom: 8px; }
-    .product-img { max-width: 80px; height: auto; margin-bottom: 8px; }
+    .product-name { font-weight: bold; }
+    .product-img { max-width: 100px; height: auto; margin-top: 10px; }
+    .sort-asc::after { content: " ▲"; }
+    .sort-desc::after { content: " ▼"; }
 </style>';
 $html .= '<script>
     document.addEventListener("DOMContentLoaded", function() {
         document.querySelectorAll("th").forEach((header, index) => {
-            header.addEventListener("click", () => sortTable(index));
+            header.addEventListener("click", () => sortTable(index, header));
         });
     });
-    function sortTable(columnIndex) {
+    
+    function sortTable(columnIndex, header) {
         const table = document.querySelector("table tbody");
         const rows = Array.from(table.rows);
-        const isAscending = table.getAttribute("data-sort-dir") === "asc";
+        const isAscending = header.classList.toggle("sort-asc", !header.classList.contains("sort-asc"));
+        header.classList.toggle("sort-desc", !isAscending);
+        
+        // Remove sort classes from other headers
+        document.querySelectorAll("th").forEach(th => {
+            if (th !== header) th.classList.remove("sort-asc", "sort-desc");
+        });
         
         rows.sort((a, b) => {
             const aText = a.cells[columnIndex].textContent.trim();
@@ -66,7 +75,6 @@ $html .= '<script>
 
         table.innerHTML = "";
         rows.forEach(row => table.appendChild(row));
-        table.setAttribute("data-sort-dir", isAscending ? "desc" : "asc");
     }
 </script>';
 $html .= '</head><body>';
@@ -88,13 +96,6 @@ foreach ($enrichedProducts as $product) {
     $html .= '<tr><td>';
     $html .= '<div class="product-name"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></div>';
 
-    // Embed product image if available
-    if ($productImage) {
-        $html .= '<img src="' . htmlspecialchars($productImage) . '" alt="' . htmlspecialchars($product['title']) . '" class="product-img">';
-    }
-
-    $html .= '</td>';
-
     // Populate cells for ingredients with quantities
     foreach ($allIngredients as $ingredient) {
         if (isset($product['recipe_components'][$ingredient])) {
@@ -103,6 +104,12 @@ foreach ($enrichedProducts as $product) {
             $html .= '<td></td>';
         }
     }
+
+    // Display product image at the bottom of the row
+    if ($productImage) {
+        $html .= '<td colspan="' . (count($allIngredients) + 1) . '"><img src="' . htmlspecialchars($productImage) . '" alt="' . htmlspecialchars($product['title']) . '" class="product-img"></td>';
+    }
+
     $html .= '</tr>';
 }
 
