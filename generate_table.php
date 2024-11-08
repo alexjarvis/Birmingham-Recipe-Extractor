@@ -92,7 +92,7 @@ function generateTableFooter($allIngredients, $enrichedProducts, $ingredientTota
 function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages) {
     $generationDate = date('F j, Y');
     $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Birmingham Ink Recipes as of ' . $generationDate . '</title>';
-    $html .= '<link rel="stylesheet" href="template/styles.css">';
+    $html .= '<link rel="stylesheet" href="../template/styles.css">';
     $html .= '</head><body>';
     $html .= '<header><h1>Birmingham Ink Recipes as of ' . $generationDate . '</h1></header>';
     $html .= '<main><table>';
@@ -125,7 +125,7 @@ function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $pr
 
     // Footer and script for table sorting
     $html .= '<footer><p>&copy; ' . date('Y') . ' Birmingham Pens</p></footer>';
-    $html .= '<script src="template/script.js"></script>';
+    $html .= '<script src="../template/script.js"></script>';
     $html .= '</body></html>';
     return $html;
 }
