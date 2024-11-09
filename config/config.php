@@ -15,7 +15,16 @@ define("ARCHIVE_FILE", ARCHIVE_DIR . '/' . $date . '-recipes.html');
 define("PRODUCTS_FILE", PRODUCTS_DIR . '/' . $date . '-products.json');
 define("ENRICHED_PRODUCTS_FILE", PRODUCTS_DIR . '/' . $date . '-products_enriched.json');
 define("INDEX_FILE", OUTPUT_DIR . '/index.html');
-
+echo "OUTPUT DIR: " . OUTPUT_DIR . PHP_EOL;
+echo "PRODUCTS DIR: " . PRODUCTS_DIR . PHP_EOL;
+echo "ARCHIVE DIR: " . ARCHIVE_DIR . PHP_EOL;
+echo "TEMPLATE DIR: " . TEMPLATE_DIR . PHP_EOL;
+echo "IMAGE DIR: " . IMAGE_DIR . PHP_EOL;
+echo "ARCHIVE FILE: " . ARCHIVE_FILE . PHP_EOL;
+echo "PRODUCTS FILE: " . PRODUCTS_FILE . PHP_EOL;
+echo "ENRICHED_PRODUCTS_FILE : " . ENRICHED_PRODUCTS_FILE . PHP_EOL;
+echo "INDEX_FILE : " . INDEX_FILE . PHP_EOL;
+exit();
 const BIRMINGHAM_BASE_URL = 'https://www.birminghampens.com';
 const FETCH_LIMIT = 100;
 const FETCH_MAX_RETRIES = 5;
