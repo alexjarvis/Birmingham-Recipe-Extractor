@@ -273,7 +273,7 @@ function generateFooterRow($label, $data): string {
 function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages): string {
   $generationDate = date('F j, Y');
   $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Birmingham Ink Recipes as of ' . $generationDate . '</title>';
-  $html .= '<link rel="stylesheet" href="/' . TEMPLATE_DIR . '/styles.css">'; // Adjusted to be relative
+  $html .= '<link rel="stylesheet" href="../template/styles.css">'; // Adjusted to be relative
   $html .= '</head><body>';
 
   // Header with Archive link on the right
@@ -291,7 +291,7 @@ function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $pr
   $html .= '<tbody>';
   foreach ($enrichedProducts as $product) {
     $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
-    $localImagePath = isset($productImages[$product['title']]) ? '/' . IMAGE_DIR . '/' . basename($productImages[$product['title']]) : ''; // Relative path to image
+    $localImagePath = isset($productImages[$product['title']]) ? '../images/' . basename($productImages[$product['title']]) : ''; // Relative path to image
 
     $html .= '<tr><td><div class="product-name"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></div>';
     if ($localImagePath) {
@@ -312,7 +312,7 @@ function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $pr
 
   // Footer and script for table sorting
   $html .= '<footer><p>&copy; ' . date('Y') . ' Birmingham Pens</p></footer>';
-  $html .= '<script src="' . '/' . TEMPLATE_DIR . '/script.js"></script>'; // Adjusted to be relative
+  $html .= '<script src="../template/script.js"></script>'; // Adjusted to be relative
   $html .= '</body></html>';
 
   return $html;
@@ -360,7 +360,7 @@ function generateTableHeader($allIngredients, $productImages): string {
 
     if (isset($productImages[$ingredient])) {
       // Construct relative path for the image
-      $localImagePath = '/' . IMAGE_DIR . '/' . basename($productImages[$ingredient]);
+      $localImagePath = '../images' . '/' . basename($productImages[$ingredient]);
       $headerHtml .= '<img src="' . htmlspecialchars($localImagePath) . '" alt="' . htmlspecialchars($ingredient) . '" class="ingredient-img">';
     }
 
@@ -441,4 +441,28 @@ function processProducts($products): array {
   usort($enrichedProducts, fn($a, $b) => strcmp($a['title'], $b['title']));
 
   return [$enrichedProducts, $ingredientTotals, $productImages];
+}
+
+/**
+ * Updates relative paths in the index file to make them root-relative.
+ *
+ * @param string $indexFile Path to the index file to modify.
+ * @return void
+ */
+function updatePathsInIndex(string $indexFile): void {
+  // Read the current contents of index.html
+  $content = file_get_contents($indexFile);
+
+  // Replace '../images' with 'images' and '../template' with 'template'
+  $updatedContent = str_replace(['../images', '../template'], ['images', 'template'], $content);
+
+  // Replace the archive link href from 'index.html' to 'archive/'
+  $updatedContent = str_replace(
+    '<a href="index.html" title="Archive" style="font-size: 3em; text-decoration: none; margin-left: auto;">',
+    '<a href="archive/" title="Archive" style="font-size: 3em; text-decoration: none; margin-left: auto;">',
+    $updatedContent
+  );
+
+  // Write the updated content back to index.html
+  file_put_contents($indexFile, $updatedContent);
 }

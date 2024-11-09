@@ -6,8 +6,8 @@ $appRoot = realpath(__DIR__ . '/..');
 define("OUTPUT_DIR", __DIR__ . '/../output');
 define("PRODUCTS_DIR", __DIR__ . '/../output/products');
 define("ARCHIVE_DIR", __DIR__ . '/../output/archive');
-define("TEMPLATE_DIR", 'output/template');
-define("IMAGE_DIR", 'output/images');
+define("TEMPLATE_DIR", __DIR__ . '/../output/template');
+define("IMAGE_DIR", __DIR__ . '/../output/images');
 
 define("ARCHIVE_FILE", ARCHIVE_DIR . '/' . $date . '-recipes.html');
 define("PRODUCTS_FILE", PRODUCTS_DIR . '/' . $date . '-products.json');

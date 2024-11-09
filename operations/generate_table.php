@@ -57,6 +57,8 @@ try {
   else {
     echo "New archive file retained as unique or only file in archive.\n";
   }
+
+  updatePathsInIndex($indexFile); // Call the function to adjust paths in index.html
 }
 catch (Exception $e) {
   echo 'Error: ' . $e->getMessage() . PHP_EOL;
