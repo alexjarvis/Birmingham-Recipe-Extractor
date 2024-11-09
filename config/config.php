@@ -7,8 +7,9 @@ $config = [
   'FETCH_MAX_RETRIES' => 5,
 ];
 
+$config['ENRICHED_PRODUCTS_FILE'] = $config['OUTPUT_DIR'] . '/' . date('Y-m-d') . '-products_enriched.json';
+$config['IMAGE_DIR'] = $config['OUTPUT_DIR'] . '/images';
+$config['PRODUCTS_FILE'] = $config['OUTPUT_DIR'] . '/' . date('Y-m-d') . '-products.json';
 $config['PRODUCTS_URL'] = $config['BIRMINGHAM_BASE_URL'] . '/products.json';
 $config['PRODUCT_URL'] = $config['BIRMINGHAM_BASE_URL'] . '/products/';
-$config['PRODUCTS_FILE'] = $config['OUTPUT_DIR'] . '/products.json';
-$config['ENRICHED_PRODUCTS_FILE'] = $config['OUTPUT_DIR'] . '/products_enriched.json';
-$config['TABLE_FILE'] = $config['OUTPUT_DIR'] . '/recipes.html';
+$config['TABLE_FILE'] = $config['OUTPUT_DIR'] . '/' . date('Y-m-d') . '-recipes.html';

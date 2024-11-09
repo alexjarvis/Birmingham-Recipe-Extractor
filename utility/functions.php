@@ -27,6 +27,19 @@ function checkOutputDir($config) {
 }
 
 /**
+ * Helper function to clean the image name by removing query parameters
+ *
+ * @param $imageUrl
+ *
+ * @return string
+ */
+function cleanImageName($imageUrl): string {
+  // Parse the URL to extract the path and remove query parameters
+  $urlParts = parse_url($imageUrl);
+  return basename($urlParts['path']); // Returns just the filename without query params
+}
+
+/**
  * Correct known recipe typos.
  *
  * @param $name
@@ -55,6 +68,29 @@ function createHttpContext() {
       'header' => "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
     ],
   ]);
+}
+
+/**
+ * Helper function to download images if they don't already exist
+ *
+ * @param $imageUrl
+ * @param $imagePath
+ *
+ * @return void
+ */
+function downloadImageIfNeeded($imageUrl, $imagePath) {
+  if (!file_exists($imagePath)) {
+    try {
+      $imageData = file_get_contents($imageUrl);
+      if ($imageData === false) {
+        throw new Exception("Failed to download image: $imageUrl");
+      }
+      file_put_contents($imagePath, $imageData);
+      echo "Downloaded: $imagePath" . PHP_EOL;
+    } catch (Exception $e) {
+      echo "Error downloading image: " . $e->getMessage() . PHP_EOL;
+    }
+  }
 }
 
 /**
@@ -209,7 +245,7 @@ function generateFooterRow($label, $data): string {
 function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages): string {
   $generationDate = date('F j, Y');
   $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Birmingham Ink Recipes as of ' . $generationDate . '</title>';
-  $html .= '<link rel="stylesheet" href="../template/styles.css">';
+  $html .= '<link rel="stylesheet" href="../output/template/styles.css">';
   $html .= '</head><body>';
   $html .= '<header><h1>Birmingham Ink Recipes as of ' . $generationDate . '</h1></header>';
   $html .= '<main><table>';
@@ -221,7 +257,7 @@ function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $pr
   $html .= '<tbody>';
   foreach ($enrichedProducts as $product) {
     $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
-    $productImage = $productImages[$product['title']] ?? 'path/to/fallback_image.jpg';
+    $productImage = $productImages[$product['title']];
 
     $html .= '<tr><td><div class="product-name"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></div>';
     if ($productImage) {
@@ -242,7 +278,7 @@ function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $pr
 
   // Footer and script for table sorting
   $html .= '<footer><p>&copy; ' . date('Y') . ' Birmingham Pens</p></footer>';
-  $html .= '<script src="../template/script.js"></script>';
+  $html .= '<script src="../output/template/script.js"></script>';
   $html .= '</body></html>';
   return $html;
 }
@@ -332,13 +368,12 @@ function prettifyHTML(string $html): string {
 }
 
 /**
- * Process products to build necessary data structures
- *
  * @param $products
+ * @param $config
  *
  * @return array
  */
-function processProducts($products): array {
+function processProducts($products, $config): array {
   $enrichedProducts = [];
   $ingredientTotals = [];
   $productImages = [];
@@ -346,7 +381,15 @@ function processProducts($products): array {
   foreach ($products as $product) {
     // Capture main image for the product
     if (!empty($product['images'][0]['src'])) {
-      $productImages[$product['title']] = $product['images'][0]['src'];
+      $imageUrl = $product['images'][0]['src'];
+      $cleanedImageName = cleanImageName($imageUrl); // Clean the image name
+      $imagePath = $config['IMAGE_DIR'] . '/' . $cleanedImageName;
+
+      // Download the image if it doesn't already exist
+      downloadImageIfNeeded($imageUrl, $imagePath);
+
+      // Map product title to the downloaded image path
+      $productImages[$product['title']] = $imagePath;
     }
 
     // Collect ingredients and quantities

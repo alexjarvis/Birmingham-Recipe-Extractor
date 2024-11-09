@@ -14,7 +14,7 @@ try {
     $enrichedProducts,
     $ingredientTotals,
     $productImages,
-  ] = processProducts($products);
+  ] = processProducts($products, $config);
 
   // Gather all unique ingredients sorted alphabetically
   $allIngredients = array_keys($ingredientTotals);
