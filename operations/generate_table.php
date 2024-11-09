@@ -8,7 +8,7 @@ try {
   // Ensure necessary directories and files exist
   checkInputFile(ENRICHED_PRODUCTS_FILE);
   checkOutputDir(ARCHIVE_DIR);
-  checkOutputDir(CURRENT_DIR);
+  checkOutputDir(OUTPUT_DIR);
   checkOutputDir(IMAGE_DIR);
 
   // Load products and process

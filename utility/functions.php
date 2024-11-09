@@ -273,13 +273,13 @@ function generateFooterRow($label, $data): string {
 function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages): string {
   $generationDate = date('F j, Y');
   $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Birmingham Ink Recipes as of ' . $generationDate . '</title>';
-  $html .= '<link rel="stylesheet" href="../template/styles.css">'; // Adjusted to be relative
+  $html .= '<link rel="stylesheet" href="/' . TEMPLATE_DIR . '/styles.css">'; // Adjusted to be relative
   $html .= '</head><body>';
 
   // Header with Archive link on the right
   $html .= '<header style="display: flex; justify-content: space-between; align-items: center;">';
   $html .= '<h1>Birmingham Ink Recipes as of ' . $generationDate . '</h1>';
-  $html .= '<a href="../archive/" title="Archive" style="font-size: 3em; text-decoration: none; margin-left: auto;">🗂️</a>';
+  $html .= '<a href="archive/" title="Archive" style="font-size: 3em; text-decoration: none; margin-left: auto;">🗂️</a>';
   $html .= '</header>';
 
   $html .= '<main><table>';
@@ -291,7 +291,7 @@ function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $pr
   $html .= '<tbody>';
   foreach ($enrichedProducts as $product) {
     $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
-    $localImagePath = isset($productImages[$product['title']]) ? '../images/' . basename($productImages[$product['title']]) : ''; // Relative path to image
+    $localImagePath = isset($productImages[$product['title']]) ? '/' . IMAGE_DIR . '/' . basename($productImages[$product['title']]) : ''; // Relative path to image
 
     $html .= '<tr><td><div class="product-name"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></div>';
     if ($localImagePath) {
@@ -312,7 +312,7 @@ function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $pr
 
   // Footer and script for table sorting
   $html .= '<footer><p>&copy; ' . date('Y') . ' Birmingham Pens</p></footer>';
-  $html .= '<script src="../template/script.js"></script>'; // Adjusted to be relative
+  $html .= '<script src="' . '/' . TEMPLATE_DIR . '/script.js"></script>'; // Adjusted to be relative
   $html .= '</body></html>';
 
   return $html;
@@ -360,7 +360,7 @@ function generateTableHeader($allIngredients, $productImages): string {
 
     if (isset($productImages[$ingredient])) {
       // Construct relative path for the image
-      $localImagePath = '../images/' . basename($productImages[$ingredient]);
+      $localImagePath = '/' . IMAGE_DIR . '/' . basename($productImages[$ingredient]);
       $headerHtml .= '<img src="' . htmlspecialchars($localImagePath) . '" alt="' . htmlspecialchars($ingredient) . '" class="ingredient-img">';
     }
 
@@ -368,6 +368,29 @@ function generateTableHeader($allIngredients, $productImages): string {
   }
   $headerHtml .= '</tr></thead>';
   return $headerHtml;
+}
+
+/**
+ * Get the real path within the context of the application root.
+ *
+ * @param string $path Relative or absolute path to resolve.
+ * @param string $appRoot Application root directory.
+ *
+ * @return string|null Real path relative to the application root, or null if
+ *   the path is outside the root.
+ */
+function getAppRelativePath(string $path, string $appRoot): ?string {
+  // Resolve the absolute path of the target
+  $realPath = realpath($path);
+
+  // Check if the resolved path exists and is within the app root
+  if ($realPath && strpos($realPath, $appRoot) === 0) {
+    // Remove the app root from the beginning to get a relative path
+    return trim(substr($realPath, strlen($appRoot) + 1));
+  }
+
+  // Return null if the path is outside the application root
+  return NULL;
 }
 
 /**
