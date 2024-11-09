@@ -11,6 +11,9 @@ try {
   echo "Generating output..." . PHP_EOL;
   require_once 'operations/generate_table.php';
 
+  echo "Generating archive..." . PHP_EOL;
+  require_once 'operations/generate_archive.php';
+
   echo "Workflow completed successfully!" . PHP_EOL;
 }
 catch (Exception $e) {

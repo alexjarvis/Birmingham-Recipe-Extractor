@@ -5,7 +5,7 @@ require_once(__DIR__ . '/../utility/functions.php');
 
 // Main execution
 try {
-  // Ensure input file exists
+  // Ensure necessary directories and files exist
   checkInputFile(ENRICHED_PRODUCTS_FILE);
   checkOutputDir(ARCHIVE_DIR);
   checkOutputDir(CURRENT_DIR);
@@ -33,31 +33,26 @@ try {
   $archiveFile = ARCHIVE_FILE;
   file_put_contents($archiveFile, $prettyHtml);
 
-  // Check if output/index.html exists
+  // Update index.html with the new archive file
   $indexFile = INDEX_FILE;
-  if (file_exists($indexFile)) {
-    // Extract table content from both files for comparison
-    $newTableContent = extractTableContent($archiveFile);
-    $existingTableContent = extractTableContent($indexFile);
+  copy($archiveFile, $indexFile);
+  echo "index.html updated with new recipe data.\n";
 
-    // Compare the table content
-    if ($newTableContent !== $existingTableContent) {
-      // Table content differs, update index.html
-      copy($archiveFile, $indexFile);
-      echo "Updated index.html with new recipe data.\n";
-    }
-    else {
-      // Table content is identical, delete the newly generated archive file
-      unlink($archiveFile);
-      unlink(PRODUCTS_FILE);
-      unlink(ENRICHED_PRODUCTS_FILE);
-      echo "No changes detected; deleted the new archive file.\n";
-    }
+  // Extract table content from both files for comparison
+  $newTableContent = extractTableContent($archiveFile);
+  $existingTableContent = extractTableContent($indexFile);
+
+  // Get a list of existing files in the archive
+  $archiveFiles = glob(ARCHIVE_DIR . '/*-recipes.html');
+
+  // Compare the table content to determine if the archive file should be deleted
+  if ($newTableContent === $existingTableContent && count($archiveFiles) > 1) {
+    // The new file is identical to the current `index.html`, and there are other archive files
+    unlink($archiveFile);
+    echo "No changes detected; deleted the new archive file.\n";
   }
   else {
-    // index.html doesn't exist, so we use the new file as the index
-    copy($archiveFile, $indexFile);
-    echo "index.html created from new recipe data.\n";
+    echo "New archive file retained as unique or only file in archive.\n";
   }
 }
 catch (Exception $e) {
