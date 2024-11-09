@@ -6,10 +6,10 @@ $date = date('Y-m-d');
 $appRoot = realpath(__DIR__ . '/..');
 
 define("OUTPUT_DIR", getAppRelativePath(__DIR__ . '/../output', $appRoot));
-define("PRODUCTS_DIR", getAppRelativePath(OUTPUT_DIR . '/products', $appRoot));
-define("ARCHIVE_DIR", getAppRelativePath(OUTPUT_DIR . '/archive', $appRoot));
-define("TEMPLATE_DIR", getAppRelativePath(OUTPUT_DIR . '/template', $appRoot));
-define("IMAGE_DIR", getAppRelativePath(OUTPUT_DIR . '/images', $appRoot));
+define("PRODUCTS_DIR", getAppRelativePath(__DIR__ . '/../output/products', $appRoot));
+define("ARCHIVE_DIR", getAppRelativePath(__DIR__ . '/../output/archive', $appRoot));
+define("TEMPLATE_DIR", getAppRelativePath(__DIR__ . '/../output/template', $appRoot));
+define("IMAGE_DIR", getAppRelativePath(__DIR__ . '/../output/images', $appRoot));
 
 define("ARCHIVE_FILE", ARCHIVE_DIR . '/' . $date . '-recipes.html');
 define("PRODUCTS_FILE", PRODUCTS_DIR . '/' . $date . '-products.json');
