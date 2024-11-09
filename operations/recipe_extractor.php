@@ -4,11 +4,10 @@ require_once(__DIR__ . '/../config/config.php');
 require_once(__DIR__ . '/../utility/functions.php');
 
 try {
-  global $config;
-  checkInputFile($config['PRODUCTS_FILE']);
+  checkInputFile(PRODUCTS_FILE);
 
   // Load JSON file containing products
-  $jsonData = file_get_contents($config['PRODUCTS_FILE']);
+  $jsonData = file_get_contents(PRODUCTS_FILE);
   $products = json_decode($jsonData, TRUE);
 
   // Check if data is valid
@@ -56,7 +55,7 @@ try {
     elseif (in_array('recipe', $product['tags'])) {
       // Standard case: Fetch the recipe from the product page if tagged as "recipe"
       $handle = $product['handle'];
-      $recipeUrl = $config['PRODUCT_URL'] . $handle;
+      $recipeUrl = PRODUCT_URL . $handle;
 
       // Use cURL to fetch the product page
       $ch = curl_init();
@@ -116,9 +115,9 @@ try {
   }
 
   // Write the enriched data to products_enriched.json
-  file_put_contents($config['ENRICHED_PRODUCTS_FILE'], json_encode($enrichedProducts, JSON_PRETTY_PRINT));
+  file_put_contents(ENRICHED_PRODUCTS_FILE, json_encode($enrichedProducts, JSON_PRETTY_PRINT));
 
-  echo "Enriched data written to " . $config['ENRICHED_PRODUCTS_FILE'] . PHP_EOL;
+  echo "Enriched data written to " . ENRICHED_PRODUCTS_FILE . PHP_EOL;
 }
 catch (Exception $e) {
   echo "Error: " . $e->getMessage() . PHP_EOL;

@@ -18,10 +18,10 @@ function checkInputFile($path) {
  * @return void
  * @throws \Exception
  */
-function checkOutputDir($config) {
-  if (!is_dir($config['OUTPUT_DIR'])) {
-    if (!mkdir($config['OUTPUT_DIR'], 0777, TRUE) && !is_dir($config['OUTPUT_DIR'])) {
-      throw new Exception("Failed to create output directory: " . $config['OUTPUT_DIR']);
+function checkOutputDir(): void {
+  if (!is_dir(OUTPUT_DIR)) {
+    if (!mkdir(OUTPUT_DIR, 0777, TRUE) && !is_dir(OUTPUT_DIR)) {
+      throw new Exception("Failed to create output directory: " . OUTPUT_DIR);
     }
   }
 }
@@ -95,17 +95,15 @@ function downloadImageIfNeeded($imageUrl, $imagePath) {
 }
 
 /**
- * @param $config
- *
  * @return array
  */
-function fetchAllProducts($config): array {
+function fetchAllProducts(): array {
   $allProducts = [];
   $page = 1;
 
   while (TRUE) {
     try {
-      $products = fetchPage($page, $config);
+      $products = fetchPage($page);
       if (empty($products)) {
         break;
       }
@@ -126,18 +124,17 @@ function fetchAllProducts($config): array {
  * Fetch a single page of products
  *
  * @param $page
- * @param $config
  *
  * @return array
  * @throws \Exception
  */
-function fetchPage($page, $config): array {
+function fetchPage($page): array {
   $retries = 0;
   $context = createHttpContext();
 
-  while ($retries < $config['FETCH_MAX_RETRIES']) {
+  while ($retries < FETCH_MAX_RETRIES) {
     try {
-      $url = $config['PRODUCTS_URL'] . '?page=' . $page . '&FETCH_LIMIT=' . $config['FETCH_LIMIT'];
+      $url = PRODUCTS_URL . '?page=' . $page . '&FETCH_LIMIT=' . FETCH_LIMIT;
       $response = file_get_contents($url, FALSE, $context);
 
       if ($response === FALSE) {
@@ -150,7 +147,7 @@ function fetchPage($page, $config): array {
     catch (Exception $e) {
       $retries++;
       echo "Attempt $retries failed for page $page: " . $e->getMessage() . PHP_EOL;
-      if ($retries >= $config['FETCH_MAX_RETRIES']) {
+      if ($retries >= FETCH_MAX_RETRIES) {
         throw new Exception("Max retries reached for page $page: " . $e->getMessage());
       }
       sleep(pow(2, $retries)); // Exponential backoff
@@ -373,11 +370,10 @@ function prettifyHTML(string $html): string {
 
 /**
  * @param $products
- * @param $config
  *
  * @return array
  */
-function processProducts($products, $config): array {
+function processProducts($products): array {
   $enrichedProducts = [];
   $ingredientTotals = [];
   $productImages = [];
@@ -387,7 +383,7 @@ function processProducts($products, $config): array {
     if (!empty($product['images'][0]['src'])) {
       $imageUrl = $product['images'][0]['src'];
       $cleanedImageName = cleanImageName($imageUrl); // Clean the image name
-      $imagePath = $config['IMAGE_DIR'] . '/' . $cleanedImageName;
+      $imagePath = IMAGE_DIR . '/' . $cleanedImageName;
 
       // Download the image if it doesn't already exist
       downloadImageIfNeeded($imageUrl, $imagePath);

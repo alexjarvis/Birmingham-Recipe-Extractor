@@ -5,16 +5,16 @@ require_once(__DIR__ . '/../utility/functions.php');
 
 // Main execution
 try {
-  global $config;
+  // Ensure input file exists
+  checkInputFile(ENRICHED_PRODUCTS_FILE);
 
-  checkInputFile($config['ENRICHED_PRODUCTS_FILE']);
-
-  $products = loadProducts($config['ENRICHED_PRODUCTS_FILE']);
+  // Load products and process
+  $products = loadProducts(ENRICHED_PRODUCTS_FILE);
   [
     $enrichedProducts,
     $ingredientTotals,
     $productImages,
-  ] = processProducts($products, $config);
+  ] = processProducts($products);
 
   // Gather all unique ingredients sorted alphabetically
   $allIngredients = array_keys($ingredientTotals);
@@ -26,14 +26,55 @@ try {
   // Prettify the HTML output
   $prettyHtml = prettifyHTML($html);
 
-  // Save the prettified HTML file
-  if (file_put_contents($config['TABLE_FILE'], $prettyHtml) !== FALSE) {
-    echo "HTML table written to " . $config['TABLE_FILE'] . PHP_EOL;
+  // Write the new HTML to the archive
+  $archiveFile = ARCHIVE_FILE;
+  file_put_contents($archiveFile, $prettyHtml);
+
+  // Check if output/index.html exists
+  $indexFile = INDEX_FILE;
+  if (file_exists($indexFile)) {
+    // Extract table content from both files for comparison
+    $newTableContent = extractTableContent($archiveFile);
+    $existingTableContent = extractTableContent($indexFile);
+
+    // Compare the table content
+    if ($newTableContent !== $existingTableContent) {
+      // Table content differs, update index.html
+      copy($archiveFile, $indexFile);
+      echo "Updated index.html with new recipe data.\n";
+    }
+    else {
+      // Table content is identical, delete the newly generated archive file
+      unlink($archiveFile);
+      echo "No changes detected; deleted the new archive file.\n";
+    }
   }
   else {
-    echo "Failed to write to " . $config['TABLE_FILE'] . PHP_EOL;
+    // index.html doesn't exist, so we use the new file as the index
+    copy($archiveFile, $indexFile);
+    echo "index.html created from new recipe data.\n";
   }
 }
 catch (Exception $e) {
   echo 'Error: ' . $e->getMessage() . PHP_EOL;
+}
+
+/**
+ * Extracts the HTML content of the <table> element from a given HTML file.
+ *
+ * @param string $filePath The path to the HTML file.
+ *
+ * @return string The HTML content of the <table> element.
+ */
+function extractTableContent(string $filePath): string {
+  $dom = new DOMDocument();
+  libxml_use_internal_errors(TRUE); // Suppress warnings for invalid HTML
+  $dom->loadHTMLFile($filePath);
+  libxml_clear_errors();
+
+  // Find the table element
+  $table = $dom->getElementsByTagName('table')->item(0);
+
+  // Return the table HTML as a string, or an empty string if not found
+  return $table ? $dom->saveHTML($table) : '';
 }
