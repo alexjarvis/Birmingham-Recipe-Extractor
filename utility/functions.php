@@ -95,6 +95,26 @@ function downloadImageIfNeeded($imageUrl, $imagePath) {
 }
 
 /**
+ * Extracts the HTML content of the <table> element from a given HTML file.
+ *
+ * @param string $filePath The path to the HTML file.
+ *
+ * @return string The HTML content of the <table> element.
+ */
+function extractTableContent(string $filePath): string {
+  $dom = new DOMDocument();
+  libxml_use_internal_errors(TRUE); // Suppress warnings for invalid HTML
+  $dom->loadHTMLFile($filePath);
+  libxml_clear_errors();
+
+  // Find the table element
+  $table = $dom->getElementsByTagName('table')->item(0);
+
+  // Return the table HTML as a string, or an empty string if not found
+  return $table ? $dom->saveHTML($table) : '';
+}
+
+/**
  * @return array
  */
 function fetchAllProducts(): array {

@@ -1,6 +1,5 @@
 <?php
 
-
 $date = date('Y-m-d');
 const OUTPUT_DIR = __DIR__ . '/../output';
 const ARCHIVE_DIR = OUTPUT_DIR . '/archive';
@@ -15,3 +14,4 @@ const IMAGE_DIR = OUTPUT_DIR . '/images';
 const INDEX_FILE = OUTPUT_DIR . '/index.html';
 const PRODUCTS_URL = BIRMINGHAM_BASE_URL . '/products.json';
 const PRODUCT_URL = BIRMINGHAM_BASE_URL . '/products/';
+const PURGE = TRUE;

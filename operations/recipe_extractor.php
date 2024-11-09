@@ -118,6 +118,10 @@ try {
   file_put_contents(ENRICHED_PRODUCTS_FILE, json_encode($enrichedProducts, JSON_PRETTY_PRINT));
 
   echo "Enriched data written to " . ENRICHED_PRODUCTS_FILE . PHP_EOL;
+
+  if (PURGE) {
+    unlink(PRODUCTS_FILE);
+  }
 }
 catch (Exception $e) {
   echo "Error: " . $e->getMessage() . PHP_EOL;
