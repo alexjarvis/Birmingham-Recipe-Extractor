@@ -5,7 +5,7 @@ $date = date('Y-m-d');
 const OUTPUT_DIR = __DIR__ . '/../output';
 const PRODUCTS_DIR = OUTPUT_DIR . '/products';
 const ARCHIVE_DIR = OUTPUT_DIR . '/archive';
-const CURRENT_DIR = OUTPUT_DIR . '/current';
+const CURRENT_DIR = OUTPUT_DIR . '/docs';
 $dateFileName = ARCHIVE_DIR . '/' . $date;
 
 define("ARCHIVE_FILE", ARCHIVE_DIR . '/' . $date . '-recipes.html');

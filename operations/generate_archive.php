@@ -12,8 +12,10 @@ try {
   $archiveIndexContent .= '<title>Recipe Archive</title></head><body>';
   $archiveIndexContent .= '<header><h1>Recipe Archive</h1></header>';
   $archiveIndexContent .= '<main>
-<p>Here are all of the Recipes captures since Nov 8th 2024. Note a file will only be written if changes are detected.</p>
+<p>Here are all of the Recipes captures since Nov 9th 2024. <em>Note</em> a file will only be written if changes are detected.</p>
 <ul>';
+
+  $first = true;
 
   // Get a list of archive files in ARCHIVE_DIR
   $archiveFiles = glob(ARCHIVE_DIR . '/*-recipes.html');
@@ -30,7 +32,13 @@ try {
       $formattedDate = date('M j, Y', strtotime($dateString));
 
       // Create a link to the archive file with the formatted date
-      $archiveIndexContent .= '<li><a href="' . htmlspecialchars($fileName) . '">Recipes as of ' . $formattedDate . '</a></li>';
+      if ($first) {
+       $first = FALSE;
+        $archiveIndexContent .= '<li><a href="../docs/">Recipes as of ' . $formattedDate . ' (Current)</a></li>';
+      }
+      else {
+        $archiveIndexContent .= '<li><a href="' . htmlspecialchars($fileName) . '">Recipes as of ' . $formattedDate . '</a></li>';
+      }
     }
   }
 

@@ -260,12 +260,28 @@ function generateFooterRow($label, $data): string {
  *
  * @return string
  */
+/**
+ * Generate HTML for the complete table with an archive link
+ *
+ * @param $enrichedProducts
+ * @param $allIngredients
+ * @param $ingredientTotals
+ * @param $productImages
+ *
+ * @return string
+ */
 function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages): string {
   $generationDate = date('F j, Y');
   $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Birmingham Ink Recipes as of ' . $generationDate . '</title>';
   $html .= '<link rel="stylesheet" href="../template/styles.css">'; // Adjusted to be relative
   $html .= '</head><body>';
-  $html .= '<header><h1>Birmingham Ink Recipes as of ' . $generationDate . '</h1></header>';
+
+  // Header with Archive link on the right
+  $html .= '<header style="display: flex; justify-content: space-between; align-items: center;">';
+  $html .= '<h1>Birmingham Ink Recipes as of ' . $generationDate . '</h1>';
+  $html .= '<a href="../archive/" title="Archive" style="font-size: 3em; text-decoration: none; margin-left: auto;">🗂️</a>';
+  $html .= '</header>';
+
   $html .= '<main><table>';
 
   // Generate table header

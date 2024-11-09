@@ -33,22 +33,25 @@ try {
   $archiveFile = ARCHIVE_FILE;
   file_put_contents($archiveFile, $prettyHtml);
 
-  // Update index.html with the new archive file
   $indexFile = INDEX_FILE;
-  copy($archiveFile, $indexFile);
-  echo "index.html updated with new recipe data.\n";
 
   // Extract table content from both files for comparison
   $newTableContent = extractTableContent($archiveFile);
   $existingTableContent = extractTableContent($indexFile);
+
+  // Update index.html with the new archive file
+  copy($archiveFile, $indexFile);
+  echo "index.html updated with new recipe data.\n";
 
   // Get a list of existing files in the archive
   $archiveFiles = glob(ARCHIVE_DIR . '/*-recipes.html');
 
   // Compare the table content to determine if the archive file should be deleted
   if ($newTableContent === $existingTableContent && count($archiveFiles) > 1) {
-    // The new file is identical to the current `index.html`, and there are other archive files
+    // The new file is identical to the docs `index.html`, and there are other archive files
     unlink($archiveFile);
+    unlink(ENRICHED_PRODUCTS_FILE);
+    unlink(PRODUCTS_FILE);
     echo "No changes detected; deleted the new archive file.\n";
   }
   else {
