@@ -82,12 +82,13 @@ function downloadImageIfNeeded($imageUrl, $imagePath) {
   if (!file_exists($imagePath)) {
     try {
       $imageData = file_get_contents($imageUrl);
-      if ($imageData === false) {
+      if ($imageData === FALSE) {
         throw new Exception("Failed to download image: $imageUrl");
       }
       file_put_contents($imagePath, $imageData);
       echo "Downloaded: $imagePath" . PHP_EOL;
-    } catch (Exception $e) {
+    }
+    catch (Exception $e) {
       echo "Error downloading image: " . $e->getMessage() . PHP_EOL;
     }
   }
@@ -245,23 +246,23 @@ function generateFooterRow($label, $data): string {
 function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages): string {
   $generationDate = date('F j, Y');
   $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Birmingham Ink Recipes as of ' . $generationDate . '</title>';
-  $html .= '<link rel="stylesheet" href="../output/template/styles.css">';
+  $html .= '<link rel="stylesheet" href="template/styles.css">'; // Adjusted to be relative
   $html .= '</head><body>';
   $html .= '<header><h1>Birmingham Ink Recipes as of ' . $generationDate . '</h1></header>';
   $html .= '<main><table>';
 
-  // Generate table header and footer
+  // Generate table header
   $html .= generateTableHeader($allIngredients, $productImages);
 
   // Table body with product data
   $html .= '<tbody>';
   foreach ($enrichedProducts as $product) {
     $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
-    $productImage = $productImages[$product['title']];
+    $localImagePath = isset($productImages[$product['title']]) ? 'images/' . basename($productImages[$product['title']]) : ''; // Relative path to image
 
     $html .= '<tr><td><div class="product-name"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></div>';
-    if ($productImage) {
-      $html .= '<img src="' . htmlspecialchars($productImage) . '" alt="' . htmlspecialchars($product['title']) . '" class="product-img">';
+    if ($localImagePath) {
+      $html .= '<img src="' . htmlspecialchars($localImagePath) . '" alt="' . htmlspecialchars($product['title']) . '" class="product-img">';
     }
     $html .= '</td>';
 
@@ -278,8 +279,9 @@ function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $pr
 
   // Footer and script for table sorting
   $html .= '<footer><p>&copy; ' . date('Y') . ' Birmingham Pens</p></footer>';
-  $html .= '<script src="../output/template/script.js"></script>';
+  $html .= '<script src="template/script.js"></script>'; // Adjusted to be relative
   $html .= '</body></html>';
+
   return $html;
 }
 
@@ -324,7 +326,9 @@ function generateTableHeader($allIngredients, $productImages): string {
     $headerHtml .= '<th><a href="' . htmlspecialchars($ingredientUrl) . '" target="_blank">' . htmlspecialchars($ingredient);
 
     if (isset($productImages[$ingredient])) {
-      $headerHtml .= '<img src="' . htmlspecialchars($productImages[$ingredient]) . '" alt="' . htmlspecialchars($ingredient) . '" class="ingredient-img">';
+      // Construct relative path for the image
+      $localImagePath = 'images/' . basename($productImages[$ingredient]);
+      $headerHtml .= '<img src="' . htmlspecialchars($localImagePath) . '" alt="' . htmlspecialchars($ingredient) . '" class="ingredient-img">';
     }
 
     $headerHtml .= '</a></th>';
