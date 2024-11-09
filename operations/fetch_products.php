@@ -4,7 +4,7 @@ require_once(__DIR__ . '/../config/config.php');
 require_once(__DIR__ . '/../utility/functions.php');
 
 try {
-  checkOutputDir(OUTPUT_DIR);
+  checkOutputDir(PRODUCTS_DIR);
 
   $allProducts = fetchAllProducts();
   $result = json_encode($allProducts, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);

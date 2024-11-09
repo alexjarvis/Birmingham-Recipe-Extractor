@@ -18,10 +18,10 @@ function checkInputFile($path) {
  * @return void
  * @throws \Exception
  */
-function checkOutputDir(): void {
-  if (!is_dir(OUTPUT_DIR)) {
-    if (!mkdir(OUTPUT_DIR, 0777, TRUE) && !is_dir(OUTPUT_DIR)) {
-      throw new Exception("Failed to create output directory: " . OUTPUT_DIR);
+function checkOutputDir($dir): void {
+  if (!is_dir($dir)) {
+    if (!mkdir($dir, 0777, TRUE) && !is_dir($dir)) {
+      throw new Exception("Failed to create output directory: " . $dir);
     }
   }
 }
@@ -263,7 +263,7 @@ function generateFooterRow($label, $data): string {
 function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages): string {
   $generationDate = date('F j, Y');
   $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Birmingham Ink Recipes as of ' . $generationDate . '</title>';
-  $html .= '<link rel="stylesheet" href="template/styles.css">'; // Adjusted to be relative
+  $html .= '<link rel="stylesheet" href="../template/styles.css">'; // Adjusted to be relative
   $html .= '</head><body>';
   $html .= '<header><h1>Birmingham Ink Recipes as of ' . $generationDate . '</h1></header>';
   $html .= '<main><table>';
@@ -275,7 +275,7 @@ function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $pr
   $html .= '<tbody>';
   foreach ($enrichedProducts as $product) {
     $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
-    $localImagePath = isset($productImages[$product['title']]) ? 'images/' . basename($productImages[$product['title']]) : ''; // Relative path to image
+    $localImagePath = isset($productImages[$product['title']]) ? '../images/' . basename($productImages[$product['title']]) : ''; // Relative path to image
 
     $html .= '<tr><td><div class="product-name"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></div>';
     if ($localImagePath) {
@@ -296,7 +296,7 @@ function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $pr
 
   // Footer and script for table sorting
   $html .= '<footer><p>&copy; ' . date('Y') . ' Birmingham Pens</p></footer>';
-  $html .= '<script src="template/script.js"></script>'; // Adjusted to be relative
+  $html .= '<script src="../template/script.js"></script>'; // Adjusted to be relative
   $html .= '</body></html>';
 
   return $html;
@@ -344,7 +344,7 @@ function generateTableHeader($allIngredients, $productImages): string {
 
     if (isset($productImages[$ingredient])) {
       // Construct relative path for the image
-      $localImagePath = 'images/' . basename($productImages[$ingredient]);
+      $localImagePath = '../images/' . basename($productImages[$ingredient]);
       $headerHtml .= '<img src="' . htmlspecialchars($localImagePath) . '" alt="' . htmlspecialchars($ingredient) . '" class="ingredient-img">';
     }
 

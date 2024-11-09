@@ -7,6 +7,9 @@ require_once(__DIR__ . '/../utility/functions.php');
 try {
   // Ensure input file exists
   checkInputFile(ENRICHED_PRODUCTS_FILE);
+  checkOutputDir(ARCHIVE_DIR);
+  checkOutputDir(CURRENT_DIR);
+  checkOutputDir(IMAGE_DIR);
 
   // Load products and process
   $products = loadProducts(ENRICHED_PRODUCTS_FILE);
@@ -46,6 +49,8 @@ try {
     else {
       // Table content is identical, delete the newly generated archive file
       unlink($archiveFile);
+      unlink(PRODUCTS_FILE);
+      unlink(ENRICHED_PRODUCTS_FILE);
       echo "No changes detected; deleted the new archive file.\n";
     }
   }
@@ -53,10 +58,6 @@ try {
     // index.html doesn't exist, so we use the new file as the index
     copy($archiveFile, $indexFile);
     echo "index.html created from new recipe data.\n";
-  }
-
-  if (PURGE) {
-    unlink(ENRICHED_PRODUCTS_FILE);
   }
 }
 catch (Exception $e) {
