@@ -371,29 +371,6 @@ function generateTableHeader($allIngredients, $productImages): string {
 }
 
 /**
- * Get the real path within the context of the application root.
- *
- * @param string $path Relative or absolute path to resolve.
- * @param string $appRoot Application root directory.
- *
- * @return string|null Real path relative to the application root, or null if
- *   the path is outside the root.
- */
-function getAppRelativePath(string $path, string $appRoot): ?string {
-  // Resolve the absolute path of the target
-  $realPath = realpath($path);
-
-  // Check if the resolved path exists and is within the app root
-  if ($realPath && strpos($realPath, $appRoot) === 0) {
-    // Remove the app root from the beginning to get a relative path
-    return trim(substr($realPath, strlen($appRoot) + 1));
-  }
-
-  // Return null if the path is outside the application root
-  return NULL;
-}
-
-/**
  * Load and validate JSON data
  *
  * @param $filePath
