@@ -10,19 +10,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out the repository
+      # Step 1: Check out the gh-pages branch first
+      - name: Check out the gh-pages branch
         uses: actions/checkout@v2
         with:
-          ref: develop  # Ensures it checks out the develop branch
+          ref: gh-pages  # Ensures it checks out the gh-pages branch
 
+      # Step 2: Copy necessary files to a temporary directory
+      - name: Copy files to temp storage
+        run: |
+          mkdir -p /tmp/deploy_files
+          cp -r output/archive /tmp/deploy_files/archive
+          cp -r output/images /tmp/deploy_files/images
+          cp -r output/products /tmp/deploy_files/products
+          cp output/index.html /tmp/deploy_files/index.html
+
+      # Step 3: Check out the develop branch
+      - name: Check out the develop branch
+        uses: actions/checkout@v2
+        with:
+          ref: develop  # Switches to the develop branch
+
+      # Step 4: Restore files from the temporary directory to output directory
+      - name: Restore files from temp storage to output
+        run: |
+          mkdir -p output/archive output/images output/products
+          cp -r /tmp/deploy_files/archive/* output/archive/
+          cp -r /tmp/deploy_files/images/* output/images/
+          cp -r /tmp/deploy_files/products/* output/products/
+          cp /tmp/deploy_files/index.html output/index.html
+
+      # Step 5: Set up PHP
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
 
+      # Step 6: Run the PHP script to generate HTML
       - name: Run the script to generate HTML
         run: php run.php
 
+      # Step 7: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
