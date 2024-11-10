@@ -20,10 +20,10 @@ jobs:
       - name: Copy files to temp storage
         run: |
           mkdir -p /tmp/deploy_files
-          cp -r output/archive /tmp/deploy_files/archive
-          cp -r output/images /tmp/deploy_files/images
-          cp -r output/products /tmp/deploy_files/products
-          cp output/index.html /tmp/deploy_files/index.html
+          cp -r archive /tmp/deploy_files/archive
+          cp -r images /tmp/deploy_files/images
+          cp -r products /tmp/deploy_files/products
+          cp index.html /tmp/deploy_files/index.html
 
       # Step 3: Check out the develop branch
       - name: Check out the develop branch
