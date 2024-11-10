@@ -20,10 +20,10 @@ jobs:
       - name: Copy files to temp storage
         run: |
           mkdir -p /tmp/deploy_files
-          cp -r archive /tmp/deploy_files/archive
-          cp -r images /tmp/deploy_files/images
-          cp -r products /tmp/deploy_files/products
-          cp index.html /tmp/deploy_files/index.html
+          mv archive /tmp/deploy_files/archive
+          mv images /tmp/deploy_files/images
+          mv products /tmp/deploy_files/products
+          mv index.html /tmp/deploy_files/index.html
 
       # Step 3: Check out the develop branch
       - name: Check out the develop branch
@@ -34,11 +34,10 @@ jobs:
       # Step 4: Restore files from the temporary directory to output directory
       - name: Restore files from temp storage to output
         run: |
-          mkdir -p output/archive output/images output/products
-          cp -r /tmp/deploy_files/archive/* output/archive/
-          cp -r /tmp/deploy_files/images/* output/images/
-          cp -r /tmp/deploy_files/products/* output/products/
-          cp /tmp/deploy_files/index.html output/index.html
+          mv /tmp/deploy_files/archive/* output/archive/
+          mv /tmp/deploy_files/images/* output/images/
+          mv /tmp/deploy_files/products/* output/products/
+          mv /tmp/deploy_files/index.html output/index.html
 
       # Step 5: Set up PHP
       - name: Set up PHP
