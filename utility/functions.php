@@ -279,7 +279,7 @@ function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $pr
   // Header with Archive link on the right
   $html .= '<header style="display: flex; justify-content: space-between; align-items: center;">';
   $html .= '<h1>Birmingham Ink Recipes as of ' . $generationDate . '</h1>';
-  $html .= '<a href="archive/" title="Archive" style="font-size: 3em; text-decoration: none; margin-left: auto;">🗂️</a>';
+  $html .= '<a href="index.html" title="Archive" style="font-size: 3em; text-decoration: none; margin-left: auto;">🗂️</a>';
   $html .= '</header>';
 
   $html .= '<main><table>';
