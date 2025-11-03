@@ -52,6 +52,8 @@ function correctTypos($name): string {
     'Sterling Siver' => 'Sterling Silver',
     'Tiger Lil' => 'Tiger Lily',
     'Teaberry Ice Crea' => 'Teaberry Ice Cream',
+    'Diluent' => 'Dilution Solution',
+    'Dilution' => 'Dilution Solution',
   ];
 
   return $corrections[$name] ?? $name; // Replace if found, otherwise return original
@@ -372,7 +374,8 @@ function generateRecipeCard($product, $productImages): string {
   $html = '<div class="recipe-card">';
 
   // Card image
-  if ($localImagePath && file_exists(__DIR__ . '/../output/' . $localImagePath)) {
+  $imageFullPath = isset($productImages[$product['title']]) ? __DIR__ . '/../output/images/' . basename($productImages[$product['title']]) : '';
+  if ($imageFullPath && file_exists($imageFullPath)) {
     $html .= '<img class="card-image" src="' . htmlspecialchars($localImagePath) . '" alt="' . htmlspecialchars($product['title']) . '">';
   } else {
     $html .= '<div class="card-image"></div>';
@@ -415,7 +418,8 @@ function generateTableRow($product, $allIngredients, $productImages): string {
   $html = '<tr><td><div class="product-cell">';
 
   // Product image
-  if ($localImagePath && file_exists(__DIR__ . '/../output/' . $localImagePath)) {
+  $imageFullPath = isset($productImages[$product['title']]) ? __DIR__ . '/../output/images/' . basename($productImages[$product['title']]) : '';
+  if ($imageFullPath && file_exists($imageFullPath)) {
     $html .= '<img class="product-img" src="' . htmlspecialchars($localImagePath) . '" alt="' . htmlspecialchars($product['title']) . '">';
   }
 
@@ -590,8 +594,8 @@ function updatePathsInIndex(string $indexFile): void {
 
   // Replace the archive link href from 'index.html' to 'archive/'
   $updatedContent = str_replace(
-    '<a href="index.html" title="Archive" style="font-size: 3em; text-decoration: none; margin-left: auto;">',
-    '<a href="archive/" title="Archive" style="font-size: 3em; text-decoration: none; margin-left: auto;">',
+    '<a href="index.html" class="btn btn-icon" title="Archive">',
+    '<a href="archive/" class="btn btn-icon" title="Archive">',
     $updatedContent
   );
 

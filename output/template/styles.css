@@ -445,6 +445,27 @@ th:hover {
   background: var(--border-color);
 }
 
+th a {
+  color: var(--accent-primary);
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+th a:hover {
+  color: var(--accent-secondary);
+}
+
+[data-theme="dark"] th a {
+  color: var(--accent-tertiary);
+}
+
+[data-theme="dark"] th a:hover {
+  color: #fff;
+}
+
 th.sortable::after {
   content: ' ⇅';
   opacity: 0.3;
