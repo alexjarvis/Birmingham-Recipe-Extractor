@@ -95,7 +95,12 @@ try {
       $recipeHtml = str_replace("\xc2\xa0", ' ', $recipeHtml);
 
       // Enhanced regex pattern to capture all possible formats
-      if (preg_match_all('/(?:<strong>\s*(\d+)\s*<\/strong>\s*|\+?\s*(\d+)\s*)\s*parts?\s*(?:<a[^>]*>)?\s*([^<\n]+?)(?:<\/a>)?\s*(?=<\/p>|<br>|$)/i', $recipeHtml, $matches)) {
+      // Matches formats:
+      //   - "5 parts Gunpowder" (standard)
+      //   - "<strong>5</strong> parts Gunpowder" (bold number)
+      //   - "+ 28 Gunpowder" (no "parts" keyword)
+      //   - "<li>1125 parts Ladybug</li>" (list format)
+      if (preg_match_all('/(?:<strong>\s*(\d+)\s*<\/strong>\s*|\+?\s*(\d+)\s*)\s*(?:parts?\s*)?(?:<a[^>]*>)?\s*([^<\n]+?)(?:<\/a>)?\s*(?=<\/p>|<br>|<\/li>|$)/i', $recipeHtml, $matches)) {
         foreach ($matches[3] as $index => $name) {
           // Use the first non-empty quantity from the matches
           $quantity = (int) ($matches[1][$index] ?: $matches[2][$index]);
