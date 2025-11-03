@@ -278,50 +278,176 @@ function generateFooterRow($label, $data): string {
  */
 function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages): string {
   $generationDate = date('F j, Y');
-  $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Birmingham Ink Recipes as of ' . $generationDate . '</title>';
-  $html .= '<link rel="stylesheet" href="../template/styles.css">'; // Adjusted to be relative
+  $recipeCount = count($enrichedProducts);
+  $ingredientCount = count($allIngredients);
+  $totalTagged = 146; // From extraction analysis
+  $captureRate = round(($recipeCount / $totalTagged) * 100, 1);
+
+  // Start HTML
+  $html = '<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8">';
+  $html .= '<meta name="viewport" content="width=device-width, initial-scale=1.0">';
+  $html .= '<title>Birmingham Ink Recipes - ' . $generationDate . '</title>';
+  $html .= '<link rel="stylesheet" href="../template/styles.css">';
   $html .= '</head><body>';
 
-  // Header with Archive link on the right
-  $html .= '<header style="display: flex; justify-content: space-between; align-items: center;">';
-  $html .= '<h1>Birmingham Ink Recipes as of ' . $generationDate . '</h1>';
-  $html .= '<a href="index.html" title="Archive" style="font-size: 3em; text-decoration: none; margin-left: auto;">🗂️</a>';
-  $html .= '</header>';
+  // Header with gradient, stats, and actions
+  $html .= '<header>';
+  $html .= '<div class="header-content">';
+  $html .= '<div class="header-top">';
+  $html .= '<div><h1>Birmingham Ink Recipes</h1><div class="header-date">Updated ' . $generationDate . '</div></div>';
+  $html .= '<div class="header-actions">';
+  $html .= '<div class="theme-toggle" id="themeToggle"></div>';
+  $html .= '<a href="index.html" class="btn btn-icon" title="Archive">🗂️</a>';
+  $html .= '</div></div>';
 
-  $html .= '<main><table>';
+  // Stats bar
+  $html .= '<div class="stats-bar">';
+  $html .= '<div class="stat"><div><div class="stat-value">' . $recipeCount . '</div><div class="stat-label">Recipes</div></div></div>';
+  $html .= '<div class="stat"><div><div class="stat-value">' . $ingredientCount . '</div><div class="stat-label">Ingredients</div></div></div>';
+  $html .= '<div class="stat"><div><div class="stat-value">' . $captureRate . '%</div><div class="stat-label">Captured</div></div></div>';
+  $html .= '</div></div></header>';
 
-  // Generate table header
+  // Main content
+  $html .= '<main>';
+
+  // Controls
+  $html .= '<div class="controls"><div class="controls-grid">';
+  $html .= '<div class="search-wrapper"><span class="search-icon">🔍</span>';
+  $html .= '<input type="text" class="search-input" placeholder="Search recipes by name or ingredient..." id="searchInput"></div>';
+  $html .= '<div class="view-toggle">';
+  $html .= '<button class="view-btn" data-view="cards">Cards</button>';
+  $html .= '<button class="view-btn active" data-view="table">Table</button>';
+  $html .= '</div></div></div>';
+
+  // Filter section with ingredient pills (show top 12 ingredients)
+  $html .= '<div class="filter-section"><div class="filter-title">Filter by Ingredient</div><div class="filter-pills">';
+  $topIngredients = array_slice($allIngredients, 0, 12);
+  foreach ($topIngredients as $ingredient) {
+    $html .= '<div class="filter-pill">' . htmlspecialchars($ingredient) . '</div>';
+  }
+  if (count($allIngredients) > 12) {
+    $remaining = count($allIngredients) - 12;
+    $html .= '<div class="filter-pill">+ ' . $remaining . ' more</div>';
+  }
+  $html .= '</div></div>';
+
+  // Card View
+  $html .= '<div id="cardView" class="card-grid hidden">';
+  foreach ($enrichedProducts as $product) {
+    $html .= generateRecipeCard($product, $productImages);
+  }
+  $html .= '</div>';
+
+  // Table View
+  $html .= '<div id="tableView" class="table-wrapper"><div class="table-scroll"><table>';
   $html .= generateTableHeader($allIngredients, $productImages);
-
-  // Table body with product data
   $html .= '<tbody>';
   foreach ($enrichedProducts as $product) {
-    $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
-    $localImagePath = isset($productImages[$product['title']]) ? '../images/' . basename($productImages[$product['title']]) : ''; // Relative path to image
-
-    $html .= '<tr><td><div class="product-name"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></div>';
-    if ($localImagePath) {
-      $html .= '<img src="' . htmlspecialchars($localImagePath) . '" alt="' . htmlspecialchars($product['title']) . '" class="product-img">';
-    }
-    $html .= '</td>';
-
-    foreach ($allIngredients as $ingredient) {
-      $html .= '<td>' . ($product['recipe_components'][$ingredient] ?? '') . '</td>';
-    }
-    $html .= '</tr>';
+    $html .= generateTableRow($product, $allIngredients, $productImages);
   }
   $html .= '</tbody>';
-
-  // Add footer with counts
   $html .= generateTableFooter($allIngredients, $enrichedProducts, $ingredientTotals);
-  $html .= '</table></main>';
+  $html .= '</table></div></div>';
 
-  // Footer and script for table sorting
-  $html .= '<footer><p>&copy; ' . date('Y') . ' Birmingham Pens</p></footer>';
-  $html .= '<script src="../template/script.js"></script>'; // Adjusted to be relative
+  $html .= '</main>';
+
+  // Script
+  $html .= '<script src="../template/script.js"></script>';
   $html .= '</body></html>';
 
   return $html;
+}
+
+/**
+ * Generate a recipe card for card view
+ *
+ * @param $product
+ * @param $productImages
+ * @return string
+ */
+function generateRecipeCard($product, $productImages): string {
+  $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
+  $localImagePath = isset($productImages[$product['title']]) ? '../images/' . basename($productImages[$product['title']]) : '';
+
+  $html = '<div class="recipe-card">';
+
+  // Card image
+  if ($localImagePath && file_exists(__DIR__ . '/../output/' . $localImagePath)) {
+    $html .= '<img class="card-image" src="' . htmlspecialchars($localImagePath) . '" alt="' . htmlspecialchars($product['title']) . '">';
+  } else {
+    $html .= '<div class="card-image"></div>';
+  }
+
+  // Card content
+  $html .= '<div class="card-content">';
+  $html .= '<h3 class="card-title"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></h3>';
+
+  // Ingredient badges
+  if (!empty($product['recipe_components'])) {
+    $html .= '<div class="ingredients-list">';
+    foreach ($product['recipe_components'] as $ingredient => $quantity) {
+      $qtyClass = getQuantityClass($quantity);
+      $html .= '<span class="ingredient-badge ' . $qtyClass . '">';
+      $html .= '<span>' . $quantity . '</span>';
+      $html .= '<span>' . htmlspecialchars($ingredient) . '</span>';
+      $html .= '</span>';
+    }
+    $html .= '</div>';
+  }
+
+  $html .= '</div></div>';
+
+  return $html;
+}
+
+/**
+ * Generate a table row
+ *
+ * @param $product
+ * @param $allIngredients
+ * @param $productImages
+ * @return string
+ */
+function generateTableRow($product, $allIngredients, $productImages): string {
+  $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
+  $localImagePath = isset($productImages[$product['title']]) ? '../images/' . basename($productImages[$product['title']]) : '';
+
+  $html = '<tr><td><div class="product-cell">';
+
+  // Product image
+  if ($localImagePath && file_exists(__DIR__ . '/../output/' . $localImagePath)) {
+    $html .= '<img class="product-img" src="' . htmlspecialchars($localImagePath) . '" alt="' . htmlspecialchars($product['title']) . '">';
+  }
+
+  // Product name
+  $html .= '<div class="product-name"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></div>';
+  $html .= '</div></td>';
+
+  // Ingredient quantities
+  foreach ($allIngredients as $ingredient) {
+    $quantity = $product['recipe_components'][$ingredient] ?? '';
+    $html .= '<td class="qty-cell">' . $quantity . '</td>';
+  }
+
+  $html .= '</tr>';
+
+  return $html;
+}
+
+/**
+ * Get CSS class for quantity badge based on value
+ *
+ * @param int $quantity
+ * @return string
+ */
+function getQuantityClass(int $quantity): string {
+  if ($quantity <= 10) {
+    return 'qty-low';
+  } elseif ($quantity <= 50) {
+    return 'qty-medium';
+  } else {
+    return 'qty-high';
+  }
 }
 
 /**
@@ -359,15 +485,15 @@ function generateTableFooter($allIngredients, $enrichedProducts, $ingredientTota
  * @return string
  */
 function generateTableHeader($allIngredients, $productImages): string {
-  $headerHtml = '<thead><tr><th>Product/Ingredients</th>';
+  $headerHtml = '<thead><tr><th class="sortable">Product</th>';
   foreach ($allIngredients as $ingredient) {
     $ingredientUrl = "https://www.birminghampens.com/products/" . urlencode(strtolower(str_replace(' ', '-', $ingredient)));
-    $headerHtml .= '<th><a href="' . htmlspecialchars($ingredientUrl) . '" target="_blank">' . htmlspecialchars($ingredient);
+    $headerHtml .= '<th class="sortable"><a href="' . htmlspecialchars($ingredientUrl) . '" target="_blank">' . htmlspecialchars($ingredient);
 
     if (isset($productImages[$ingredient])) {
       // Construct relative path for the image
       $localImagePath = '../images' . '/' . basename($productImages[$ingredient]);
-      $headerHtml .= '<img src="' . htmlspecialchars($localImagePath) . '" alt="' . htmlspecialchars($ingredient) . '" class="ingredient-img">';
+      $headerHtml .= '<br><img src="' . htmlspecialchars($localImagePath) . '" alt="' . htmlspecialchars($ingredient) . '" class="ingredient-img">';
     }
 
     $headerHtml .= '</a></th>';
