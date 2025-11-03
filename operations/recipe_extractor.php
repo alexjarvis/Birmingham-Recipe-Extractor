@@ -108,7 +108,15 @@ try {
           // Clean up the ingredient name
           $name = correctTypos(trim(html_entity_decode(strip_tags($name))));
 
-          $recipeComponents[$name] = $quantity;  // Store in components array
+          // Filter out invalid ingredient names (e.g., product descriptions)
+          // Valid ingredients should start with uppercase or be short, and not contain
+          // multiple hyphens or common product description words
+          if (strlen($name) > 0 &&
+              strlen($name) < 50 &&
+              !preg_match('/\b(ml|volume|approximately|provide|standard|converter|refills?)\b/i', $name) &&
+              preg_match('/^[A-Z]/', $name)) {
+            $recipeComponents[$name] = $quantity;  // Store in components array
+          }
         }
       }
     }
