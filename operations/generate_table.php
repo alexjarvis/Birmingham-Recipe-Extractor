@@ -23,6 +23,9 @@ try {
   $allIngredients = array_keys($ingredientTotals);
   sort($allIngredients);
 
+  echo "Products with recipes: " . count($enrichedProducts) . "\n";
+  echo "Unique ingredients: " . count($allIngredients) . "\n";
+
   // Generate the HTML content
   $html = generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages);
 
@@ -32,33 +35,42 @@ try {
   // Write the new HTML to the archive
   $archiveFile = ARCHIVE_FILE;
   file_put_contents($archiveFile, $prettyHtml);
+  echo "Created archive file: $archiveFile\n";
 
   $indexFile = INDEX_FILE;
 
   // Extract table content from both files for comparison
   $newTableContent = extractTableContent($archiveFile);
-  $existingTableContent = extractTableContent($indexFile);
-
-  // Update index.html with the new archive file
-  copy($archiveFile, $indexFile);
-  echo "index.html updated with new recipe data.\n";
+  $existingTableContent = file_exists($indexFile) ? extractTableContent($indexFile) : '';
 
   // Get a list of existing files in the archive
   $archiveFiles = glob(ARCHIVE_DIR . '/*-recipes.html');
 
-  // Compare the table content to determine if the archive file should be deleted
-  if ($newTableContent === $existingTableContent && count($archiveFiles) > 1) {
-    // The new file is identical to the docs `index.html`, and there are other archive files
-    unlink($archiveFile);
-    unlink(ENRICHED_PRODUCTS_FILE);
-    unlink(PRODUCTS_FILE);
-    echo "No changes detected; deleted the new archive file.\n";
+  // Compare the table content to determine if we should update index.html
+  if ($newTableContent !== $existingTableContent || empty($existingTableContent)) {
+    // Content has changed or index.html doesn't exist - update it
+    copy($archiveFile, $indexFile);
+    updatePathsInIndex($indexFile); // Call the function to adjust paths in index.html
+    echo "✓ index.html updated with new recipe data (content changed).\n";
+    echo "✓ New archive file retained: " . basename($archiveFile) . "\n";
   }
   else {
-    echo "New archive file retained as unique or only file in archive.\n";
-  }
+    // Content is identical - don't update index.html
+    echo "✗ No recipe changes detected (table content identical).\n";
 
-  updatePathsInIndex($indexFile); // Call the function to adjust paths in index.html
+    if (count($archiveFiles) > 1) {
+      // Delete the redundant archive file and JSON files
+      unlink($archiveFile);
+      unlink(ENRICHED_PRODUCTS_FILE);
+      unlink(PRODUCTS_FILE);
+      echo "✗ Deleted redundant files (archive, products JSON, enriched JSON).\n";
+      echo "✓ index.html preserved unchanged.\n";
+    }
+    else {
+      // Keep the file if it's the only archive
+      echo "✓ Archive file retained as only file in archive.\n";
+    }
+  }
 }
 catch (Exception $e) {
   echo 'Error: ' . $e->getMessage() . PHP_EOL;

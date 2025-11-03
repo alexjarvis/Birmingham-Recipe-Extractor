@@ -125,9 +125,12 @@ function fetchAllProducts(): array {
     try {
       $products = fetchPage($page);
       if (empty($products)) {
+        echo "No more products found on page $page. Stopping." . PHP_EOL;
         break;
       }
 
+      $productCount = count($products);
+      echo "Retrieved $productCount products from page $page" . PHP_EOL;
       $allProducts = array_merge($allProducts, $products);
       $page++;
     }
@@ -137,6 +140,8 @@ function fetchAllProducts(): array {
     }
   }
 
+  $totalProducts = count($allProducts);
+  echo "Total products fetched: $totalProducts" . PHP_EOL;
   return $allProducts;
 }
 
@@ -154,7 +159,8 @@ function fetchPage($page): array {
 
   while ($retries < FETCH_MAX_RETRIES) {
     try {
-      $url = PRODUCTS_URL . '?page=' . $page . '&FETCH_LIMIT=' . FETCH_LIMIT;
+      $url = PRODUCTS_URL . '?page=' . $page . '&limit=' . FETCH_LIMIT;
+      echo "Fetching page $page from: $url" . PHP_EOL;
       $response = file_get_contents($url, FALSE, $context);
 
       if ($response === FALSE) {
