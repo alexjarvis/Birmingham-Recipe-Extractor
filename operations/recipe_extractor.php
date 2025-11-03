@@ -15,7 +15,9 @@ try {
     die("Invalid products.json data." . PHP_EOL);
   }
 
+  echo "Processing " . count($products) . " products...\n";
   $enrichedProducts = [];
+  $recipesFound = 0;
 
   foreach ($products as $product) {
     // Extract basic information
@@ -110,14 +112,20 @@ try {
     $enrichedProduct['recipe_components'] = $recipeComponents;
 
     // Add enriched product to the results array
-    echo $product['title'] . PHP_EOL;
+    if (!empty($recipeComponents)) {
+      $recipesFound++;
+      echo "  ✓ " . $product['title'] . " (recipe with " . count($recipeComponents) . " ingredients)\n";
+    }
     $enrichedProducts[] = $enrichedProduct;
   }
 
   // Write the enriched data to products_enriched.json
   file_put_contents(ENRICHED_PRODUCTS_FILE, json_encode($enrichedProducts, JSON_PRETTY_PRINT));
 
-  echo "Enriched data written to " . ENRICHED_PRODUCTS_FILE . PHP_EOL;
+  echo "\nSummary:\n";
+  echo "  Total products processed: " . count($products) . "\n";
+  echo "  Products with recipes: $recipesFound\n";
+  echo "  Enriched data written to " . ENRICHED_PRODUCTS_FILE . PHP_EOL;
 }
 catch (Exception $e) {
   echo "Error: " . $e->getMessage() . PHP_EOL;

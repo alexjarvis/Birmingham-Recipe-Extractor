@@ -16,14 +16,21 @@ jobs:
         with:
           ref: gh-pages  # Ensures it checks out the gh-pages branch
 
-      # Step 2: Copy necessary files to a temporary directory
-      - name: Copy files to temp storage
+      # Step 2: Preserve only necessary files to a temporary directory
+      # Note: We only preserve archive HTML and images - not old product JSON files
+      - name: Preserve files to temp storage
         run: |
-          mkdir -p /tmp/deploy_files
-          mv archive /tmp/deploy_files/archive
-          mv images /tmp/deploy_files/images
-          mv products /tmp/deploy_files/products
-          mv index.html /tmp/deploy_files/index.html
+          mkdir -p /tmp/deploy_files/archive
+          mkdir -p /tmp/deploy_files/images
+          if [ -d "archive" ] && [ "$(ls -A archive)" ]; then
+            mv archive/* /tmp/deploy_files/archive/ 2>/dev/null || true
+          fi
+          if [ -d "images" ] && [ "$(ls -A images)" ]; then
+            mv images/* /tmp/deploy_files/images/ 2>/dev/null || true
+          fi
+          if [ -f "index.html" ]; then
+            mv index.html /tmp/deploy_files/index.html
+          fi
 
       # Step 3: Check out the develop branch
       - name: Check out the develop branch
@@ -32,12 +39,17 @@ jobs:
           ref: develop  # Switches to the develop branch
 
       # Step 4: Restore files from the temporary directory to output directory
-      - name: Restore files from temp storage to output
+      - name: Restore preserved files to output
         run: |
-          mv /tmp/deploy_files/archive/* output/archive/
-          mv /tmp/deploy_files/images/* output/images/
-          mv /tmp/deploy_files/products/* output/products/
-          mv /tmp/deploy_files/index.html output/index.html
+          if [ "$(ls -A /tmp/deploy_files/archive 2>/dev/null)" ]; then
+            mv /tmp/deploy_files/archive/* output/archive/ 2>/dev/null || true
+          fi
+          if [ "$(ls -A /tmp/deploy_files/images 2>/dev/null)" ]; then
+            mv /tmp/deploy_files/images/* output/images/ 2>/dev/null || true
+          fi
+          if [ -f "/tmp/deploy_files/index.html" ]; then
+            mv /tmp/deploy_files/index.html output/index.html
+          fi
 
       # Step 5: Set up PHP
       - name: Set up PHP
