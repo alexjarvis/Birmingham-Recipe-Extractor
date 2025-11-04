@@ -43,9 +43,6 @@ try {
   $newTableContent = extractTableContent($archiveFile);
   $existingTableContent = file_exists($indexFile) ? extractTableContent($indexFile) : '';
 
-  // Get a list of existing files in the archive
-  $archiveFiles = glob(ARCHIVE_DIR . '/*-recipes.html');
-
   // Compare the table content to determine if we should update index.html
   if ($newTableContent !== $existingTableContent || empty($existingTableContent)) {
     // Content has changed or index.html doesn't exist - update it
@@ -58,18 +55,13 @@ try {
     // Content is identical - don't update index.html
     echo "✗ No recipe changes detected (table content identical).\n";
 
-    if (count($archiveFiles) > 1) {
-      // Delete the redundant archive file and JSON files
-      unlink($archiveFile);
-      unlink(ENRICHED_PRODUCTS_FILE);
-      unlink(PRODUCTS_FILE);
-      echo "✗ Deleted redundant files (archive, products JSON, enriched JSON).\n";
-      echo "✓ index.html preserved unchanged.\n";
-    }
-    else {
-      // Keep the file if it's the only archive
-      echo "✓ Archive file retained as only file in archive.\n";
-    }
+    // Always delete the redundant archive file when content is identical
+    // The index.html already contains this content, so no need for a duplicate archive entry
+    unlink($archiveFile);
+    unlink(ENRICHED_PRODUCTS_FILE);
+    unlink(PRODUCTS_FILE);
+    echo "✗ Deleted redundant files (archive, products JSON, enriched JSON).\n";
+    echo "✓ index.html preserved unchanged.\n";
   }
 }
 catch (Exception $e) {
