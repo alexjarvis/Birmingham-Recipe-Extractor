@@ -134,10 +134,36 @@ $remainingFiles = glob($archiveDir . '/*-recipes.html');
 sort($remainingFiles);
 rsort($remainingFiles); // Most recent first
 
-$html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Birmingham Ink Recipe Archive</title>';
-$html .= '<link rel="stylesheet" href="../template/styles.css"></head><body>';
-$html .= '<header><h1>Birmingham Ink Recipe Archive</h1></header>';
-$html .= '<main><h2>Recipe History</h2><ul>';
+$html = '<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8">';
+$html .= '<meta name="viewport" content="width=device-width, initial-scale=1.0">';
+$html .= '<title>Birmingham Ink Recipe Archive</title>';
+$html .= '<link rel="stylesheet" href="../template/styles.css">';
+$html .= '<style>';
+$html .= '.archive-list { max-width: 800px; margin: 2rem auto; padding: 0 1rem; }';
+$html .= '.archive-list h2 { color: var(--text-primary); margin-bottom: 1.5rem; font-size: 1.5rem; }';
+$html .= '.archive-list ul { list-style: none; padding: 0; }';
+$html .= '.archive-list li { background: var(--bg-secondary); border: 1px solid var(--border-color); ';
+$html .= 'border-radius: 8px; margin-bottom: 0.75rem; transition: all 0.2s ease; }';
+$html .= '.archive-list li:hover { transform: translateX(4px); box-shadow: 0 2px 8px var(--shadow); }';
+$html .= '.archive-list a { display: block; padding: 1rem 1.5rem; color: var(--text-primary); ';
+$html .= 'text-decoration: none; font-size: 1.1rem; }';
+$html .= '.archive-list a:hover { color: var(--accent-primary); }';
+$html .= '.archive-list .current { color: var(--accent-primary); font-weight: 600; }';
+$html .= '.archive-list em { color: var(--text-secondary); font-style: normal; ';
+$html .= 'font-size: 0.9rem; margin-left: 0.5rem; }';
+$html .= 'footer { text-align: center; padding: 2rem; color: var(--text-secondary); ';
+$html .= 'border-top: 1px solid var(--border-color); margin-top: 3rem; }';
+$html .= '</style>';
+$html .= '</head><body>';
+$html .= '<header>';
+$html .= '<div class="header-content">';
+$html .= '<div class="header-top">';
+$html .= '<div><h1>Birmingham Ink Recipes</h1><div class="header-date">Recipe Archive</div></div>';
+$html .= '<div class="header-actions">';
+$html .= '<div class="theme-toggle" id="themeToggle"></div>';
+$html .= '<a href="../" class="btn btn-icon" title="Current Recipes">🏠</a>';
+$html .= '</div></div></div></header>';
+$html .= '<main><div class="archive-list"><h2>Recipe History</h2><ul>';
 
 foreach ($remainingFiles as $file) {
     $basename = basename($file);
@@ -153,14 +179,15 @@ foreach ($remainingFiles as $file) {
 
     if ($currentTable === $archiveTable) {
         // This is the current version
-        $html .= '<li><a href="../">Recipes as of ' . $date . '</a> <em>(Current)</em></li>';
+        $html .= '<li><a href="../" class="current">Recipes as of ' . $date . ' <em>(Current)</em></a></li>';
     } else {
         $html .= '<li><a href="' . htmlspecialchars($basename) . '">Recipes as of ' . $date . '</a></li>';
     }
 }
 
-$html .= '</ul></main>';
+$html .= '</ul></div></main>';
 $html .= '<footer><p>&copy; ' . date('Y') . ' Birmingham Pens</p></footer>';
+$html .= '<script src="../template/script.js"></script>';
 $html .= '</body></html>';
 
 file_put_contents($archiveDir . '/index.html', $html);
