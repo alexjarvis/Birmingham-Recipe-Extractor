@@ -52,8 +52,12 @@ foreach ($archiveFiles as $file) {
     // Extract table content
     $tableContent = extractTableContent($file);
 
-    // Create a hash of the table content (excluding date/timestamp info)
-    $hash = md5($tableContent);
+    // Normalize paths before hashing to ensure consistent comparison
+    // (archives use '../images' while index.html uses 'images')
+    $tableContentNormalized = str_replace(['../images', '../template'], ['images', 'template'], $tableContent);
+
+    // Create a hash of the normalized table content (excluding date/timestamp and path differences)
+    $hash = md5($tableContentNormalized);
 
     $fileHashes[$file] = $hash;
 
@@ -177,7 +181,11 @@ foreach ($remainingFiles as $file) {
     $currentTable = extractTableContent(__DIR__ . '/index.html');
     $archiveTable = extractTableContent($file);
 
-    if ($currentTable === $archiveTable) {
+    // Normalize paths before comparison
+    $currentTableNormalized = str_replace(['../images', '../template'], ['images', 'template'], $currentTable);
+    $archiveTableNormalized = str_replace(['../images', '../template'], ['images', 'template'], $archiveTable);
+
+    if ($currentTableNormalized === $archiveTableNormalized) {
         // This is the current version
         $html .= '<li><a href="../" class="current">Recipes as of ' . $date . ' <em>(Current)</em></a></li>';
     } else {

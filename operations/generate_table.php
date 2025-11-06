@@ -43,8 +43,13 @@ try {
   $newTableContent = extractTableContent($archiveFile);
   $existingTableContent = file_exists($indexFile) ? extractTableContent($indexFile) : '';
 
+  // Normalize paths in table content for comparison (remove ../ prefixes)
+  // This ensures we compare actual recipe data, not just path differences
+  $newTableNormalized = str_replace(['../images', '../template'], ['images', 'template'], $newTableContent);
+  $existingTableNormalized = str_replace(['../images', '../template'], ['images', 'template'], $existingTableContent);
+
   // Compare the table content to determine if we should update index.html
-  if ($newTableContent !== $existingTableContent || empty($existingTableContent)) {
+  if ($newTableNormalized !== $existingTableNormalized || empty($existingTableNormalized)) {
     // Content has changed or index.html doesn't exist - update it
     copy($archiveFile, $indexFile);
     updatePathsInIndex($indexFile); // Call the function to adjust paths in index.html
