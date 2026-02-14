@@ -65,5 +65,6 @@ pages:
   artifacts:
     paths:
       - public
+    expire_in: 1 hour  # Only keep latest; new deployment replaces old
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
