@@ -26,22 +26,6 @@ phpunit:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
-generate-test:
-  stage: test
-  image: php:8.3-cli-alpine
-  before_script:
-    - apk add --no-cache curl php-curl php-json php-dom
-  script:
-    - php run.php
-    - test -f output/index.html || exit 1
-  artifacts:
-    paths:
-      - output/
-    expire_in: 1 day
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-
 # GitLab Pages deployment - mirrors GitHub Pages from gh-pages branch
 pages:
   stage: deploy
