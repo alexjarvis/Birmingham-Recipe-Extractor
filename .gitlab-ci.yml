@@ -9,9 +9,8 @@ stages:
 # =============================================================================
 # GITHUB SYNC
 # =============================================================================
-# Requires CI/CD variables:
-#   - GITHUB_REPO_URL: https://github.com/alexjarvis/repo.git (public read)
-#   - GITHUB_PUSH_URL: https://alexjarvis:<TOKEN>@github.com/alexjarvis/repo.git (for push)
+# Requires CI/CD variable:
+#   - GITHUB_URL: https://alexjarvis:<TOKEN>@github.com/alexjarvis/birmingham-recipe-extractor.git
 
 # Pull gh-pages from GitHub (scheduled daily)
 sync-gh-pages-from-github:
@@ -20,7 +19,7 @@ sync-gh-pages-from-github:
   script:
     - git config --global user.email "gitlab-ci@rivendell.fivedigitinteger.com"
     - git config --global user.name "GitLab CI"
-    - git remote add github "${GITHUB_REPO_URL}" || true
+    - git remote add github "${GITHUB_URL}" || true
     - git fetch github gh-pages
     - git fetch origin gh-pages || true
     - |
@@ -69,7 +68,7 @@ push-main-to-github:
   stage: deploy
   image: alpine/git
   script:
-    - git remote add github "${GITHUB_PUSH_URL}" || true
+    - git remote add github "${GITHUB_URL}" || true
     - git push github HEAD:main
   rules:
     - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "schedule"
