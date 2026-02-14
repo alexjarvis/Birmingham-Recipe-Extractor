@@ -1,0 +1,41 @@
+---
+stages:
+  - lint
+  - build
+  - test
+
+php-syntax:
+  stage: lint
+  image: php:8.3-cli-alpine
+  script:
+    - find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \;
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+docker-build:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t birmingham-recipe-extractor .
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+generate-test:
+  stage: test
+  image: php:8.3-cli-alpine
+  before_script:
+    - apk add --no-cache curl php-curl php-json php-dom
+  script:
+    - php run.php
+    - test -f output/index.html || exit 1
+  artifacts:
+    paths:
+      - output/
+    expire_in: 1 day
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

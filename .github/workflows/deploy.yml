@@ -32,11 +32,11 @@ jobs:
             mv index.html /tmp/deploy_files/index.html
           fi
 
-      # Step 3: Check out the develop branch
-      - name: Check out the develop branch
+      # Step 3: Check out the main branch
+      - name: Check out the main branch
         uses: actions/checkout@v2
         with:
-          ref: develop  # Switches to the develop branch
+          ref: main  # Switches to the main branch
 
       # Step 4: Restore files from the temporary directory to output directory
       - name: Restore preserved files to output
