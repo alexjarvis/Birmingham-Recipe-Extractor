@@ -2,6 +2,7 @@
 stages:
   - lint
   - test
+  - build
   - deploy
 
 php-syntax:
@@ -24,6 +25,29 @@ phpunit:
     - ./vendor/bin/phpunit
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Docker build using Docker-in-Docker
+docker-build:
+  stage: build
+  image: docker:24.0
+  services:
+    - name: docker:24.0-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - docker info
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .
+    - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:latest
+    # Push to registry if configured
+    - if [ -n "$CI_REGISTRY_USER" ]; then
+        docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY;
+        docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA;
+        docker push $CI_REGISTRY_IMAGE:latest;
+      fi
+  rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 # GitLab Pages deployment - mirrors GitHub Pages from gh-pages branch
