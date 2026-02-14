@@ -38,7 +38,8 @@ docker-build:
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
   script:
-    - docker info
+    # Wait for Docker daemon to be ready
+    - for i in $(seq 1 30); do docker info && break || sleep 2; done
     - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .
     - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:latest
     # Push to registry if configured
