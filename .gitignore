@@ -1,2 +1,4 @@
 /output/products_enriched.json
 /output/products.json
+/vendor/
+/.phpunit.cache/
