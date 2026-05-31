@@ -85,10 +85,11 @@ function createHttpContext() {
  *
  * @return void
  */
-function downloadImageIfNeeded($imageUrl, $imagePath) {
+function downloadImageIfNeeded($imageUrl, $imagePath, ?callable $fetcher = null) {
   if (!file_exists($imagePath)) {
+    $fetcher ??= fn(string $url): string|false => file_get_contents($url);
     try {
-      $imageData = file_get_contents($imageUrl);
+      $imageData = $fetcher($imageUrl);
       if ($imageData === FALSE) {
         throw new Exception("Failed to download image: $imageUrl");
       }
@@ -122,15 +123,17 @@ function extractTableContent(string $filePath): string {
 }
 
 /**
+ * @param callable|null $fetcher fn(int $page): array  Optional override for tests.
+ * @param callable|null $sleeper fn(int $seconds): void  Optional override for tests.
  * @return array
  */
-function fetchAllProducts(): array {
+function fetchAllProducts(?callable $fetcher = null, ?callable $sleeper = null): array {
   $allProducts = [];
   $page = 1;
 
   while (TRUE) {
     try {
-      $products = fetchPage($page);
+      $products = fetchPage($page, $fetcher, $sleeper);
       if (empty($products)) {
         echo "No more products found on page $page. Stopping." . PHP_EOL;
         break;
@@ -153,22 +156,25 @@ function fetchAllProducts(): array {
 }
 
 /**
- * Fetch a single page of products
+ * Fetch a single page of products.
  *
- * @param $page
+ * @param int $page
+ * @param callable|null $fetcher fn(string $url): string|false  HTTP fetcher; defaults to file_get_contents with the shared User-Agent context.
+ * @param callable|null $sleeper fn(int $seconds): void
  *
  * @return array
  * @throws \Exception
  */
-function fetchPage($page): array {
+function fetchPage($page, ?callable $fetcher = null, ?callable $sleeper = null): array {
+  $fetcher ??= fn(string $url): string|false => file_get_contents($url, FALSE, createHttpContext());
+  $sleeper ??= 'sleep';
   $retries = 0;
-  $context = createHttpContext();
 
   while ($retries < FETCH_MAX_RETRIES) {
     try {
       $url = PRODUCTS_URL . '?page=' . $page . '&limit=' . FETCH_LIMIT;
       echo "Fetching page $page from: $url" . PHP_EOL;
-      $response = file_get_contents($url, FALSE, $context);
+      $response = $fetcher($url);
 
       if ($response === FALSE) {
         throw new Exception("Failed to fetch URL: $url");
@@ -183,7 +189,7 @@ function fetchPage($page): array {
       if ($retries >= FETCH_MAX_RETRIES) {
         throw new Exception("Max retries reached for page $page: " . $e->getMessage());
       }
-      sleep(pow(2, $retries)); // Exponential backoff
+      $sleeper((int) pow(2, $retries));
     }
   }
 
@@ -546,30 +552,27 @@ function prettifyHTML(string $html): string {
 }
 
 /**
- * @param $products
+ * @param array $products
+ * @param callable|null $imageHandler fn(string $imageUrl): string  Returns the local image path. Default downloads to IMAGE_DIR.
  *
  * @return array
  */
-function processProducts($products): array {
+function processProducts($products, ?callable $imageHandler = null): array {
+  $imageHandler ??= function (string $imageUrl): string {
+    $imagePath = IMAGE_DIR . '/' . cleanImageName($imageUrl);
+    downloadImageIfNeeded($imageUrl, $imagePath);
+    return $imagePath;
+  };
+
   $enrichedProducts = [];
   $ingredientTotals = [];
   $productImages = [];
 
   foreach ($products as $product) {
-    // Capture main image for the product
     if (!empty($product['images'][0]['src'])) {
-      $imageUrl = $product['images'][0]['src'];
-      $cleanedImageName = cleanImageName($imageUrl); // Clean the image name
-      $imagePath = IMAGE_DIR . '/' . $cleanedImageName;
-
-      // Download the image if it doesn't already exist
-      downloadImageIfNeeded($imageUrl, $imagePath);
-
-      // Map product title to the downloaded image path
-      $productImages[$product['title']] = $imagePath;
+      $productImages[$product['title']] = $imageHandler($product['images'][0]['src']);
     }
 
-    // Collect ingredients and quantities
     if (!empty($product['recipe_components']) && is_array($product['recipe_components'])) {
       $enrichedProducts[] = $product;
       foreach ($product['recipe_components'] as $ingredient => $quantity) {
@@ -578,7 +581,6 @@ function processProducts($products): array {
     }
   }
 
-  // Sort products by title
   usort($enrichedProducts, fn($a, $b) => strcmp($a['title'], $b['title']));
 
   return [$enrichedProducts, $ingredientTotals, $productImages];
@@ -609,6 +611,24 @@ function updatePathsInIndex(string $indexFile): void {
 }
 
 /**
+ * Build the curl_setopt options array for a recipe-page fetch. Pure function
+ * so the configuration can be unit-tested without making real HTTP calls.
+ *
+ * @param string $url
+ * @return array<int, mixed>
+ */
+function recipeFetchCurlOptions(string $url): array {
+  return [
+    CURLOPT_URL => $url,
+    CURLOPT_RETURNTRANSFER => TRUE,
+    CURLOPT_USERAGENT => RECIPE_FETCH_USER_AGENT,
+    CURLOPT_FOLLOWLOCATION => TRUE,
+    CURLOPT_TIMEOUT => RECIPE_FETCH_TIMEOUT_SECONDS,
+    CURLOPT_CONNECTTIMEOUT => RECIPE_FETCH_CONNECT_TIMEOUT_SECONDS,
+  ];
+}
+
+/**
  * Default HTTP fetcher backed by curl. Returns ['status' => int, 'body' => string|false].
  *
  * @param string $url
@@ -616,12 +636,7 @@ function updatePathsInIndex(string $indexFile): void {
  */
 function curlFetchProductPage(string $url): array {
   $ch = curl_init();
-  curl_setopt($ch, CURLOPT_URL, $url);
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-  curl_setopt($ch, CURLOPT_USERAGENT, RECIPE_FETCH_USER_AGENT);
-  curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
-  curl_setopt($ch, CURLOPT_TIMEOUT, RECIPE_FETCH_TIMEOUT_SECONDS);
-  curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, RECIPE_FETCH_CONNECT_TIMEOUT_SECONDS);
+  curl_setopt_array($ch, recipeFetchCurlOptions($url));
   $body = curl_exec($ch);
   $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
   return ['status' => $status, 'body' => $body];
