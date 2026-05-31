@@ -132,9 +132,14 @@
 
   // Extract data from DOM
   function extractData() {
-    // Extract recipes from cards
+    // Extract recipes from cards. Cards and table rows are emitted in the same
+    // order by generateHTML, so we can pair each recipe with its row at index
+    // time and stop relying on positional lookups in renderFiltered. (Sorting
+    // the table reorders rows but not state.allRecipes, which used to break
+    // the index correlation and silently swap which rows were hidden.)
     const cards = document.querySelectorAll('.recipe-card');
-    state.allRecipes = Array.from(cards).map(card => {
+    const tableRows = document.querySelectorAll('tbody tr');
+    state.allRecipes = Array.from(cards).map((card, i) => {
       const title = card.querySelector('.card-title')?.textContent.trim() || '';
       const ingredients = Array.from(card.querySelectorAll('.ingredient-badge')).map(badge => {
         const parts = badge.textContent.trim().split(/\s+/);
@@ -147,7 +152,8 @@
       return {
         title,
         ingredients,
-        element: card
+        element: card,
+        row: tableRows[i] || null
       };
     });
 
@@ -186,23 +192,14 @@
   }
 
   function renderFiltered(recipes) {
-    // Card view
-    if (elements.cards.length) {
-      state.allRecipes.forEach(recipe => {
-        recipe.element.classList.toggle('hidden', !recipes.includes(recipe));
-      });
-    }
-
-    // Table view
-    if (elements.tableBody) {
-      const rows = Array.from(elements.tableBody.querySelectorAll('tr'));
-      rows.forEach((row, index) => {
-        const recipe = state.allRecipes[index];
-        if (recipe) {
-          row.classList.toggle('hidden', !recipes.includes(recipe));
-        }
-      });
-    }
+    const visible = new Set(recipes);
+    state.allRecipes.forEach(recipe => {
+      const hidden = !visible.has(recipe);
+      // Card and row are stored on the recipe so toggling is order-independent
+      // — works correctly even after the table has been sorted.
+      if (recipe.element) recipe.element.classList.toggle('hidden', hidden);
+      if (recipe.row) recipe.row.classList.toggle('hidden', hidden);
+    });
   }
 
   // Table Sorting
