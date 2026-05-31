@@ -1,4 +1,7 @@
 /output/products_enriched.json
 /output/products.json
+/output/products/*.json
+/output/archive/*.html
+/output/index.html
 /vendor/
 /.phpunit.cache/

@@ -1,5 +1,10 @@
 <?php
 
+const RECIPE_FETCH_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
+const RECIPE_FETCH_TIMEOUT_SECONDS = 30;
+const RECIPE_FETCH_CONNECT_TIMEOUT_SECONDS = 10;
+const RECIPE_FETCH_MAX_ATTEMPTS = 3;
+
 /**
  * @param $path
  *
@@ -601,4 +606,103 @@ function updatePathsInIndex(string $indexFile): void {
 
   // Write the updated content back to index.html
   file_put_contents($indexFile, $updatedContent);
+}
+
+/**
+ * Default HTTP fetcher backed by curl. Returns ['status' => int, 'body' => string|false].
+ *
+ * @param string $url
+ * @return array{status:int, body:string|false}
+ */
+function curlFetchProductPage(string $url): array {
+  $ch = curl_init();
+  curl_setopt($ch, CURLOPT_URL, $url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+  curl_setopt($ch, CURLOPT_USERAGENT, RECIPE_FETCH_USER_AGENT);
+  curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
+  curl_setopt($ch, CURLOPT_TIMEOUT, RECIPE_FETCH_TIMEOUT_SECONDS);
+  curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, RECIPE_FETCH_CONNECT_TIMEOUT_SECONDS);
+  $body = curl_exec($ch);
+  $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  return ['status' => $status, 'body' => $body];
+}
+
+/**
+ * Fetch a product page with retry-and-backoff. Returns the body on HTTP 200,
+ * or null if all attempts fail. The fetcher and sleeper are injectable so the
+ * retry behaviour can be unit-tested without real HTTP or wall-clock waits.
+ *
+ * @param string $url
+ * @param int $maxAttempts
+ * @param callable|null $fetcher fn(string $url): array{status:int, body:string|false}
+ * @param callable|null $sleeper fn(int $seconds): void
+ * @return string|null
+ */
+function fetchProductPage(string $url, int $maxAttempts = RECIPE_FETCH_MAX_ATTEMPTS, ?callable $fetcher = null, ?callable $sleeper = null): ?string {
+  $fetcher ??= 'curlFetchProductPage';
+  $sleeper ??= 'sleep';
+  for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+    $result = $fetcher($url);
+    $status = $result['status'] ?? 0;
+    $body = $result['body'] ?? false;
+    if ($status === 200 && is_string($body)) {
+      return $body;
+    }
+    if ($attempt < $maxAttempts) {
+      $sleeper((int) pow(2, $attempt));
+    }
+  }
+  return null;
+}
+
+/**
+ * Extract the inner HTML of the first .metafield-rich_text_field div on a
+ * product page. Returns an empty string if the element is absent.
+ *
+ * @param string $pageHtml
+ * @return string
+ */
+function extractRecipeHtmlFromPage(string $pageHtml): string {
+  $dom = new DOMDocument();
+  libxml_use_internal_errors(TRUE);
+  $dom->loadHTML($pageHtml);
+  libxml_clear_errors();
+  $xpath = new DOMXPath($dom);
+  $nodes = $xpath->query("//div[contains(@class, 'metafield-rich_text_field')]");
+  if ($nodes->length === 0) {
+    return '';
+  }
+  $out = '';
+  foreach ($nodes[0]->childNodes as $child) {
+    $out .= $dom->saveHTML($child);
+  }
+  return $out;
+}
+
+/**
+ * Parse a recipe HTML fragment into [ingredient => quantity] pairs.
+ * Applies typo correction and filters product-description noise.
+ *
+ * @param string $recipeHtml
+ * @return array<string,int>
+ */
+function parseRecipeComponents(string $recipeHtml): array {
+  $components = [];
+  if ($recipeHtml === '') {
+    return $components;
+  }
+  $recipeHtml = str_replace("\xc2\xa0", ' ', $recipeHtml);
+  if (preg_match_all('/(?:<strong>\s*(\d+)\s*<\/strong>\s*|\+?\s*(\d+)\s*)\s*(?:parts?\s*)?(?:<a[^>]*>)?\s*([^<\n]+?)(?:<\/a>)?\s*(?=<\/p>|<br>|<\/li>|$)/i', $recipeHtml, $matches)) {
+    foreach ($matches[3] as $index => $name) {
+      $quantity = (int) ($matches[1][$index] ?: $matches[2][$index]);
+      $name = correctTypos(trim(html_entity_decode(strip_tags($name))));
+      if (strlen($name) > 0 &&
+          strlen($name) < 50 &&
+          !preg_match('/\b(ml|volume|approximately|provide|standard|converter|refills?)\b/i', $name) &&
+          preg_match('/^[A-Z]/', $name)) {
+        $components[$name] = $quantity;
+      }
+    }
+  }
+  return $components;
 }

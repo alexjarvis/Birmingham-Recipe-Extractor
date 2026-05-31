@@ -3,6 +3,9 @@
 require_once(__DIR__ . '/../config/config.php');
 require_once(__DIR__ . '/../utility/functions.php');
 
+const RECIPE_CAPTURE_MIN_RATIO = 0.80;
+const RECIPE_FETCH_INTER_REQUEST_DELAY_MICROSECONDS = 250000; // 250ms politeness delay
+
 try {
   checkInputFile(PRODUCTS_FILE);
 
@@ -18,6 +21,9 @@ try {
   echo "Processing " . count($products) . " products...\n";
   $enrichedProducts = [];
   $recipesFound = 0;
+  $taggedRecipeCount = 0;
+  $fetchSuccessCount = 0;
+  $fetchFailures = [];
 
   foreach ($products as $product) {
     // Extract basic information
@@ -45,101 +51,65 @@ try {
       'body_html' => $product['body_html'],
     ];
 
-    // Initialize recipe variables
     $recipeHtml = '';
-    $recipeComponents = [];
 
-    // Check if "Ink Recipe" appears in body_html for special cases
     if (strpos($product['body_html'], 'Ink Recipe') !== FALSE) {
-      // Special case: Extract recipe from body_html
+      // Special case: recipe lives directly in the product description.
       $recipeHtml = $product['body_html'];
     }
     elseif (in_array('recipe', $product['tags'])) {
-      // Standard case: Fetch the recipe from the product page if tagged as "recipe"
-      $handle = $product['handle'];
-      $recipeUrl = PRODUCT_URL . $handle;
+      $taggedRecipeCount++;
+      $recipeUrl = PRODUCT_URL . $product['handle'];
 
-      // Use cURL to fetch the product page
-      $ch = curl_init();
-      curl_setopt($ch, CURLOPT_URL, $recipeUrl);
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-      curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
-      curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
-      $html = curl_exec($ch);
-      curl_close($ch);
+      $pageHtml = fetchProductPage($recipeUrl);
 
-      if ($html !== FALSE) {
-        // Extract recipe content from the product page
-        $dom = new DOMDocument();
-        libxml_use_internal_errors(TRUE);
-        $dom->loadHTML($html);
-        libxml_clear_errors();
-
-        $xpath = new DOMXPath($dom);
-        $recipeNode = $xpath->query("//div[contains(@class, 'metafield-rich_text_field')]");
-
-        if ($recipeNode->length > 0) {
-          foreach ($recipeNode[0]->childNodes as $child) {
-            $recipeHtml .= $dom->saveHTML($child);
-          }
-        }
+      if ($pageHtml === NULL) {
+        $fetchFailures[] = $product['title'];
+        echo "  ✗ " . $product['title'] . " (fetch failed after " . RECIPE_FETCH_MAX_ATTEMPTS . " attempts)\n";
       }
+      else {
+        $fetchSuccessCount++;
+        $recipeHtml = extractRecipeHtmlFromPage($pageHtml);
+      }
+
+      // Politeness delay between sequential requests to avoid tripping rate limits.
+      usleep(RECIPE_FETCH_INTER_REQUEST_DELAY_MICROSECONDS);
     }
 
-    // Store the original recipe HTML
     $enrichedProduct['recipe'] = trim($recipeHtml);
+    $enrichedProduct['recipe_components'] = parseRecipeComponents($recipeHtml);
 
-    // In the main processing loop where you store recipe components
-    if ($recipeHtml) {
-      // Normalize non-breaking spaces
-      $recipeHtml = str_replace("\xc2\xa0", ' ', $recipeHtml);
-
-      // Enhanced regex pattern to capture all possible formats
-      // Matches formats:
-      //   - "5 parts Gunpowder" (standard)
-      //   - "<strong>5</strong> parts Gunpowder" (bold number)
-      //   - "+ 28 Gunpowder" (no "parts" keyword)
-      //   - "<li>1125 parts Ladybug</li>" (list format)
-      if (preg_match_all('/(?:<strong>\s*(\d+)\s*<\/strong>\s*|\+?\s*(\d+)\s*)\s*(?:parts?\s*)?(?:<a[^>]*>)?\s*([^<\n]+?)(?:<\/a>)?\s*(?=<\/p>|<br>|<\/li>|$)/i', $recipeHtml, $matches)) {
-        foreach ($matches[3] as $index => $name) {
-          // Use the first non-empty quantity from the matches
-          $quantity = (int) ($matches[1][$index] ?: $matches[2][$index]);
-
-          // Clean up the ingredient name
-          $name = correctTypos(trim(html_entity_decode(strip_tags($name))));
-
-          // Filter out invalid ingredient names (e.g., product descriptions)
-          // Valid ingredients should start with uppercase or be short, and not contain
-          // multiple hyphens or common product description words
-          if (strlen($name) > 0 &&
-              strlen($name) < 50 &&
-              !preg_match('/\b(ml|volume|approximately|provide|standard|converter|refills?)\b/i', $name) &&
-              preg_match('/^[A-Z]/', $name)) {
-            $recipeComponents[$name] = $quantity;  // Store in components array
-          }
-        }
-      }
-    }
-
-    // Assign parsed components to the enriched product
-    $enrichedProduct['recipe_components'] = $recipeComponents;
-
-    // Add enriched product to the results array
-    if (!empty($recipeComponents)) {
+    if (!empty($enrichedProduct['recipe_components'])) {
       $recipesFound++;
-      echo "  ✓ " . $product['title'] . " (recipe with " . count($recipeComponents) . " ingredients)\n";
+      echo "  ✓ " . $product['title'] . " (recipe with " . count($enrichedProduct['recipe_components']) . " ingredients)\n";
     }
     $enrichedProducts[] = $enrichedProduct;
   }
 
-  // Write the enriched data to products_enriched.json
   file_put_contents(ENRICHED_PRODUCTS_FILE, json_encode($enrichedProducts, JSON_PRETTY_PRINT));
 
   echo "\nSummary:\n";
   echo "  Total products processed: " . count($products) . "\n";
   echo "  Products with recipes: $recipesFound\n";
+  if ($taggedRecipeCount > 0) {
+    $rate = $fetchSuccessCount / $taggedRecipeCount;
+    echo "  Recipe-tagged products fetched: $fetchSuccessCount/$taggedRecipeCount (" . round($rate * 100, 1) . "%)\n";
+    if (!empty($fetchFailures)) {
+      echo "  Failed handles: " . implode(', ', $fetchFailures) . "\n";
+    }
+    if ($rate < RECIPE_CAPTURE_MIN_RATIO) {
+      throw new RuntimeException(sprintf(
+        'Capture rate %.1f%% below minimum %.0f%% (%d/%d recipe-tagged products fetched). Refusing to publish a degraded snapshot.',
+        $rate * 100,
+        RECIPE_CAPTURE_MIN_RATIO * 100,
+        $fetchSuccessCount,
+        $taggedRecipeCount
+      ));
+    }
+  }
   echo "  Enriched data written to " . ENRICHED_PRODUCTS_FILE . PHP_EOL;
 }
 catch (Exception $e) {
   echo "Error: " . $e->getMessage() . PHP_EOL;
+  throw $e;
 }

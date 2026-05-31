@@ -16,6 +16,7 @@ try {
 
   echo "Workflow completed successfully!" . PHP_EOL;
 }
-catch (Exception $e) {
-  echo "An error occurred: " . $e->getMessage() . PHP_EOL;
+catch (Throwable $e) {
+  fwrite(STDERR, "An error occurred: " . $e->getMessage() . PHP_EOL);
+  exit(1);
 }
