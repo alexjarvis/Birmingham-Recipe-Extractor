@@ -12,7 +12,7 @@ jobs:
     steps:
       # Step 1: Check out the gh-pages branch first
       - name: Check out the gh-pages branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           ref: gh-pages  # Ensures it checks out the gh-pages branch
 
@@ -34,7 +34,7 @@ jobs:
 
       # Step 3: Check out the main branch
       - name: Check out the main branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           ref: main  # Switches to the main branch
 
@@ -73,7 +73,7 @@ jobs:
 
       # Step 8: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: output
