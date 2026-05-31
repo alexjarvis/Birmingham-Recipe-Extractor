@@ -11,6 +11,9 @@ try {
 
   // Load JSON file containing products
   $jsonData = file_get_contents(PRODUCTS_FILE);
+  if ($jsonData === FALSE) {
+    throw new Exception('Failed to read ' . PRODUCTS_FILE);
+  }
   $products = json_decode($jsonData, TRUE);
 
   // Check if data is valid

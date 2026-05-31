@@ -6,12 +6,9 @@ const RECIPE_FETCH_CONNECT_TIMEOUT_SECONDS = 10;
 const RECIPE_FETCH_MAX_ATTEMPTS = 3;
 
 /**
- * @param $path
- *
- * @return void
  * @throws \Exception
  */
-function checkInputFile($path) {
+function checkInputFile(string $path): void {
   if (!is_file($path)) {
     throw new Exception("Failed to load input file: " . $path);
   }
@@ -20,10 +17,9 @@ function checkInputFile($path) {
 /**
  * Checks for the existence of output directory and creates it if necessary.
  *
- * @return void
  * @throws \Exception
  */
-function checkOutputDir($dir): void {
+function checkOutputDir(string $dir): void {
   if (!is_dir($dir)) {
     if (!mkdir($dir, 0777, TRUE) && !is_dir($dir)) {
       throw new Exception("Failed to create output directory: " . $dir);
@@ -33,25 +29,16 @@ function checkOutputDir($dir): void {
 
 /**
  * Helper function to clean the image name by removing query parameters
- *
- * @param $imageUrl
- *
- * @return string
  */
-function cleanImageName($imageUrl): string {
-  // Parse the URL to extract the path and remove query parameters
+function cleanImageName(string $imageUrl): string {
   $urlParts = parse_url($imageUrl);
-  return basename($urlParts['path']); // Returns just the filename without query params
+  return basename($urlParts['path'] ?? $imageUrl);
 }
 
 /**
  * Correct known recipe typos.
- *
- * @param $name
- *
- * @return string
  */
-function correctTypos($name): string {
+function correctTypos(string $name): string {
   $corrections = [
     'Saltwater Taffy' => 'Salt Water Taffy',
     'Sterling Siver' => 'Sterling Silver',
@@ -61,15 +48,16 @@ function correctTypos($name): string {
     'Dilution' => 'Dilution Solution',
   ];
 
-  return $corrections[$name] ?? $name; // Replace if found, otherwise return original
+  return $corrections[$name] ?? $name;
 }
 
 /**
- * Create a reusable HTTP context.
+ * Create a reusable HTTP context for outbound requests.
  *
  * @return resource
  */
-function createHttpContext() {
+function createHttpContext()
+{
   return stream_context_create([
     'http' => [
       'header' => "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
@@ -82,13 +70,9 @@ const IMAGE_DOWNLOAD_TIMEOUT_SECONDS = 30;
 /**
  * Helper function to download images if they don't already exist
  *
- * @param string $imageUrl
- * @param string $imagePath
  * @param callable|null $fetcher fn(string $url): string|false  Optional override for tests.
- *
- * @return void
  */
-function downloadImageIfNeeded($imageUrl, $imagePath, ?callable $fetcher = null) {
+function downloadImageIfNeeded(string $imageUrl, string $imagePath, ?callable $fetcher = null): void {
   if (!file_exists($imagePath)) {
     $fetcher ??= function (string $url): string|false {
       // Bound the request — without a timeout, a slow CDN can hang the run.
@@ -136,13 +120,17 @@ function extractTableContentFromString(string $html): string {
   $dom->loadHTML($html);
   libxml_clear_errors();
   $table = $dom->getElementsByTagName('table')->item(0);
-  return $table ? $dom->saveHTML($table) : '';
+  if ($table === null) {
+    return '';
+  }
+  $serialized = $dom->saveHTML($table);
+  return $serialized === false ? '' : $serialized;
 }
 
 /**
  * @param callable|null $fetcher fn(int $page): array  Optional override for tests.
  * @param callable|null $sleeper fn(int $seconds): void  Optional override for tests.
- * @return array
+ * @return array<int, array<string, mixed>>
  */
 function fetchAllProducts(?callable $fetcher = null, ?callable $sleeper = null): array {
   $allProducts = [];
@@ -175,14 +163,13 @@ function fetchAllProducts(?callable $fetcher = null, ?callable $sleeper = null):
 /**
  * Fetch a single page of products.
  *
- * @param int $page
- * @param callable|null $fetcher fn(string $url): string|false  HTTP fetcher; defaults to file_get_contents with the shared User-Agent context.
+ * @param callable|null $fetcher fn(string $url): string|false
  * @param callable|null $sleeper fn(int $seconds): void
  *
- * @return array
+ * @return array<int, array<string, mixed>>
  * @throws \Exception
  */
-function fetchPage($page, ?callable $fetcher = null, ?callable $sleeper = null): array {
+function fetchPage(int $page, ?callable $fetcher = null, ?callable $sleeper = null): array {
   $fetcher ??= fn(string $url): string|false => file_get_contents($url, FALSE, createHttpContext());
   $sleeper ??= 'sleep';
   $retries = 0;
@@ -245,8 +232,10 @@ function formatNode(DOMNode $node, int $level = 0): string {
       $output .= $indent . "<" . $child->nodeName;
 
       // Add attributes
-      foreach ($child->attributes as $attr) {
-        $output .= " " . $attr->nodeName . '="' . htmlspecialchars($attr->nodeValue) . '"';
+      if ($child->attributes !== null) {
+        foreach ($child->attributes as $attr) {
+          $output .= " " . $attr->nodeName . '="' . htmlspecialchars($attr->nodeValue ?? '') . '"';
+        }
       }
 
       // Check if the element is self-closing
@@ -272,42 +261,27 @@ function formatNode(DOMNode $node, int $level = 0): string {
 /**
  * Generate footer row with counts
  *
- * @param $label
- * @param $data
- *
- * @return string
+ * @param array<int, int|string> $data
  */
-function generateFooterRow($label, $data): string {
+function generateFooterRow(string $label, array $data): string {
   $rowHtml = "<tr><td>$label</td>";
   foreach ($data as $value) {
-    $rowHtml .= '<td>' . htmlspecialchars($value) . '</td>';
+    $rowHtml .= '<td>' . htmlspecialchars((string) $value) . '</td>';
   }
   $rowHtml .= '</tr>';
   return $rowHtml;
 }
 
 /**
- * Generate HTML for the complete table
- *
- * @param $enrichedProducts
- * @param $allIngredients
- * @param $ingredientTotals
- * @param $productImages
- *
- * @return string
- */
-/**
  * Generate HTML for the complete table with an archive link
  *
- * @param $enrichedProducts
- * @param $allIngredients
- * @param $ingredientTotals
- * @param $productImages
+ * @param array<int, array<string, mixed>> $enrichedProducts
+ * @param array<int, string> $allIngredients
+ * @param array<string, int> $ingredientTotals
+ * @param array<string, string> $productImages
  * @param int|null $totalTagged Number of products that *should* have a recipe (denominator for the capture-rate stat). Defaults to count($enrichedProducts), i.e. assumes 100% capture when not specified.
- *
- * @return string
  */
-function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages, ?int $totalTagged = null): string {
+function generateHTML(array $enrichedProducts, array $allIngredients, array $ingredientTotals, array $productImages, ?int $totalTagged = null): string {
   $generationDate = date('F j, Y');
   $recipeCount = count($enrichedProducts);
   $ingredientCount = count($allIngredients);
@@ -392,11 +366,10 @@ function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $pr
 /**
  * Generate a recipe card for card view
  *
- * @param $product
- * @param $productImages
- * @return string
+ * @param array<string, mixed> $product
+ * @param array<string, string> $productImages
  */
-function generateRecipeCard($product, $productImages): string {
+function generateRecipeCard(array $product, array $productImages): string {
   $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
   $localImagePath = isset($productImages[$product['title']]) ? '../images/' . basename($productImages[$product['title']]) : '';
 
@@ -435,12 +408,11 @@ function generateRecipeCard($product, $productImages): string {
 /**
  * Generate a table row
  *
- * @param $product
- * @param $allIngredients
- * @param $productImages
- * @return string
+ * @param array<string, mixed> $product
+ * @param array<int, string> $allIngredients
+ * @param array<string, string> $productImages
  */
-function generateTableRow($product, $allIngredients, $productImages): string {
+function generateTableRow(array $product, array $allIngredients, array $productImages): string {
   $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
   $localImagePath = isset($productImages[$product['title']]) ? '../images/' . basename($productImages[$product['title']]) : '';
 
@@ -486,13 +458,11 @@ function getQuantityClass(int $quantity): string {
 /**
  * Generate HTML footer for Recipe Count and Quantity Count
  *
- * @param $allIngredients
- * @param $enrichedProducts
- * @param $ingredientTotals
- *
- * @return string
+ * @param array<int, string> $allIngredients
+ * @param array<int, array<string, mixed>> $enrichedProducts
+ * @param array<string, int> $ingredientTotals
  */
-function generateTableFooter($allIngredients, $enrichedProducts, $ingredientTotals): string {
+function generateTableFooter(array $allIngredients, array $enrichedProducts, array $ingredientTotals): string {
   $footerHtml = '<tfoot>';
 
   // Recipe Count Row
@@ -512,12 +482,10 @@ function generateTableFooter($allIngredients, $enrichedProducts, $ingredientTota
 /**
  * Generate HTML header for the table
  *
- * @param $allIngredients
- * @param $productImages
- *
- * @return string
+ * @param array<int, string> $allIngredients
+ * @param array<string, string> $productImages
  */
-function generateTableHeader($allIngredients, $productImages): string {
+function generateTableHeader(array $allIngredients, array $productImages): string {
   $headerHtml = '<thead><tr><th class="sortable">Product</th>';
   foreach ($allIngredients as $ingredient) {
     $ingredientUrl = "https://www.birminghampens.com/products/" . urlencode(strtolower(str_replace(' ', '-', $ingredient)));
@@ -538,15 +506,16 @@ function generateTableHeader($allIngredients, $productImages): string {
 /**
  * Load and validate JSON data
  *
- * @param $filePath
- *
- * @return array
+ * @return array<int, array<string, mixed>>
  * @throws \Exception
  */
-function loadProducts($filePath): array {
+function loadProducts(string $filePath): array {
   checkInputFile($filePath);
 
   $jsonData = file_get_contents($filePath);
+  if ($jsonData === FALSE) {
+    throw new Exception("Failed to read $filePath");
+  }
   $products = json_decode($jsonData, TRUE);
 
   if (!is_array($products)) {
@@ -569,16 +538,16 @@ function prettifyHTML(string $html): string {
   // mb_encode_numericentity is the modern equivalent — converts non-ASCII
   // characters to numeric HTML entities so DOMDocument parses them correctly.
   @$dom->loadHTML(mb_encode_numericentity($html, [0x80, 0x10FFFF, 0, 0xFFFFFF], 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-  return formatNode($dom->documentElement);
+  return $dom->documentElement === null ? '' : formatNode($dom->documentElement);
 }
 
 /**
- * @param array $products
+ * @param array<int, array<string, mixed>> $products
  * @param callable|null $imageHandler fn(string $imageUrl): string  Returns the local image path. Default downloads to IMAGE_DIR.
  *
- * @return array
+ * @return array{0: array<int, array<string, mixed>>, 1: array<string, int>, 2: array<string, string>}
  */
-function processProducts($products, ?callable $imageHandler = null): array {
+function processProducts(array $products, ?callable $imageHandler = null): array {
   $imageHandler ??= function (string $imageUrl): string {
     $imagePath = IMAGE_DIR . '/' . cleanImageName($imageUrl);
     downloadImageIfNeeded($imageUrl, $imagePath);
@@ -616,6 +585,9 @@ function processProducts($products, ?callable $imageHandler = null): array {
 function updatePathsInIndex(string $indexFile): void {
   // Read the current contents of index.html
   $content = file_get_contents($indexFile);
+  if ($content === FALSE) {
+    throw new Exception("Failed to read $indexFile");
+  }
 
   // Replace '../images' with 'images' and '../template' with 'template'
   $updatedContent = str_replace(['../images', '../template'], ['images', 'template'], $content);
@@ -660,7 +632,9 @@ function curlFetchProductPage(string $url): array {
   curl_setopt_array($ch, recipeFetchCurlOptions($url));
   $body = curl_exec($ch);
   $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-  return ['status' => $status, 'body' => $body];
+  // CURLOPT_RETURNTRANSFER=true means curl_exec returns string|false, but
+  // PHPStan's stub keeps the broader string|bool — coerce stray true to false.
+  return ['status' => $status, 'body' => is_string($body) ? $body : false];
 }
 
 /**
@@ -705,12 +679,19 @@ function extractRecipeHtmlFromPage(string $pageHtml): string {
   libxml_clear_errors();
   $xpath = new DOMXPath($dom);
   $nodes = $xpath->query("//div[contains(@class, 'metafield-rich_text_field')]");
-  if ($nodes->length === 0) {
+  if ($nodes === false || $nodes->length === 0) {
+    return '';
+  }
+  $first = $nodes->item(0);
+  if (!$first instanceof DOMNode) {
     return '';
   }
   $out = '';
-  foreach ($nodes[0]->childNodes as $child) {
-    $out .= $dom->saveHTML($child);
+  foreach ($first->childNodes as $child) {
+    $serialized = $dom->saveHTML($child);
+    if ($serialized !== false) {
+      $out .= $serialized;
+    }
   }
   return $out;
 }

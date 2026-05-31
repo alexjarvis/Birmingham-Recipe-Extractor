@@ -18,7 +18,7 @@ try {
   $first = TRUE;
 
   // Get a list of archive files in ARCHIVE_DIR
-  $archiveFiles = glob(ARCHIVE_DIR . '/*-recipes.html');
+  $archiveFiles = glob(ARCHIVE_DIR . '/*-recipes.html') ?: [];
 
   // Sort files by date, most recent first
   rsort($archiveFiles);
@@ -29,7 +29,8 @@ try {
     $fileName = basename($filePath);
     if (preg_match('/(\d{4}-\d{2}-\d{2})/', $fileName, $matches)) {
       $dateString = $matches[1];
-      $formattedDate = date('M j, Y', strtotime($dateString));
+      $timestamp = strtotime($dateString);
+      $formattedDate = $timestamp !== false ? date('M j, Y', $timestamp) : $dateString;
 
       // Create a link to the archive file with the formatted date
       if ($first) {

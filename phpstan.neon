@@ -1,0 +1,14 @@
+parameters:
+    level: 8
+    paths:
+        - utility
+        - operations
+        - run.php
+    bootstrapFiles:
+        - vendor/autoload.php
+        - config/config.php
+    excludePaths:
+        - vendor
+    parallel:
+        maximumNumberOfProcesses: 1
+        processTimeout: 300.0

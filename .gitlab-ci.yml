@@ -116,6 +116,7 @@ phpunit:
     - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
     - composer install --no-interaction --prefer-dist
   script:
+    - ./vendor/bin/phpstan analyse --memory-limit=512M --no-progress
     - ./vendor/bin/phpunit
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
