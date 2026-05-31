@@ -40,43 +40,35 @@ try {
   // Prettify the HTML output
   $prettyHtml = prettifyHTML($html);
 
-  // Write the new HTML to the archive
   $archiveFile = ARCHIVE_FILE;
-  file_put_contents($archiveFile, $prettyHtml);
-  echo "Created archive file: $archiveFile\n";
-
   $indexFile = INDEX_FILE;
 
-  // Extract table content from both files for comparison
-  $newTableContent = extractTableContent($archiveFile);
-  $existingTableContent = file_exists($indexFile) ? extractTableContent($indexFile) : '';
+  // Compare in-memory first — only persist when the table content has actually
+  // changed, avoiding the wasteful write+delete cycle on no-op days.
+  $newTable = extractTableContentFromString($prettyHtml);
+  $existingTable = file_exists($indexFile) ? extractTableContent($indexFile) : '';
 
-  // Normalize paths in table content for comparison (remove ../ prefixes)
-  // This ensures we compare actual recipe data, not just path differences
-  $newTableNormalized = str_replace(['../images', '../template'], ['images', 'template'], $newTableContent);
-  $existingTableNormalized = str_replace(['../images', '../template'], ['images', 'template'], $existingTableContent);
+  $newTableNormalized = str_replace(['../images', '../template'], ['images', 'template'], $newTable);
+  $existingTableNormalized = str_replace(['../images', '../template'], ['images', 'template'], $existingTable);
 
-  // Compare the table content to determine if we should update index.html
   if ($newTableNormalized !== $existingTableNormalized || empty($existingTableNormalized)) {
-    // Content has changed or index.html doesn't exist - update it
+    // Content has changed (or no index yet) — persist the new archive and update index.
+    file_put_contents($archiveFile, $prettyHtml);
     copy($archiveFile, $indexFile);
-    updatePathsInIndex($indexFile); // Call the function to adjust paths in index.html
+    updatePathsInIndex($indexFile);
+    echo "✓ Created archive file: $archiveFile\n";
     echo "✓ index.html updated with new recipe data (content changed).\n";
-    echo "✓ New archive file retained: " . basename($archiveFile) . "\n";
   }
   else {
-    // Content is identical - don't update index.html
+    // Content is identical — don't write anything; clean up generated inputs that we'd otherwise leak.
     echo "✗ No recipe changes detected (table content identical).\n";
-
-    // Always delete the redundant archive file when content is identical
-    // The index.html already contains this content, so no need for a duplicate archive entry
-    unlink($archiveFile);
-    unlink(ENRICHED_PRODUCTS_FILE);
-    unlink(PRODUCTS_FILE);
-    echo "✗ Deleted redundant files (archive, products JSON, enriched JSON).\n";
+    @unlink(ENRICHED_PRODUCTS_FILE);
+    @unlink(PRODUCTS_FILE);
+    echo "✗ Deleted redundant inputs (products JSON, enriched JSON).\n";
     echo "✓ index.html preserved unchanged.\n";
   }
 }
 catch (Exception $e) {
   echo 'Error: ' . $e->getMessage() . PHP_EOL;
+  throw $e;
 }

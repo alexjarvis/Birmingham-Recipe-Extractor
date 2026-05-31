@@ -118,15 +118,24 @@ function downloadImageIfNeeded($imageUrl, $imagePath, ?callable $fetcher = null)
  * @return string The HTML content of the <table> element.
  */
 function extractTableContent(string $filePath): string {
+  return extractTableContentFromString(file_get_contents($filePath) ?: '');
+}
+
+/**
+ * Extracts the HTML content of the first <table> element from an HTML string.
+ *
+ * @param string $html
+ * @return string The HTML content of the <table> element, or empty string.
+ */
+function extractTableContentFromString(string $html): string {
+  if ($html === '') {
+    return '';
+  }
   $dom = new DOMDocument();
-  libxml_use_internal_errors(TRUE); // Suppress warnings for invalid HTML
-  $dom->loadHTMLFile($filePath);
+  libxml_use_internal_errors(TRUE);
+  $dom->loadHTML($html);
   libxml_clear_errors();
-
-  // Find the table element
   $table = $dom->getElementsByTagName('table')->item(0);
-
-  // Return the table HTML as a string, or an empty string if not found
   return $table ? $dom->saveHTML($table) : '';
 }
 
@@ -556,7 +565,10 @@ function loadProducts($filePath): array {
  */
 function prettifyHTML(string $html): string {
   $dom = new DOMDocument('1.0', 'UTF-8');
-  @$dom->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+  // mb_convert_encoding with 'HTML-ENTITIES' is deprecated in PHP 8.2+;
+  // mb_encode_numericentity is the modern equivalent — converts non-ASCII
+  // characters to numeric HTML entities so DOMDocument parses them correctly.
+  @$dom->loadHTML(mb_encode_numericentity($html, [0x80, 0x10FFFF, 0, 0xFFFFFF], 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
   return formatNode($dom->documentElement);
 }
 

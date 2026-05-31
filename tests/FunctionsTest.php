@@ -704,6 +704,25 @@ final class FunctionsTest extends TestCase
         }
     }
 
+    public function testExtractTableContentFromStringReturnsTableHtml(): void
+    {
+        $result = extractTableContentFromString('<html><body><p>before</p><table><tr><td>cell</td></tr></table></body></html>');
+
+        $this->assertStringContainsString('<table', $result);
+        $this->assertStringContainsString('cell', $result);
+        $this->assertStringNotContainsString('before', $result);
+    }
+
+    public function testExtractTableContentFromStringReturnsEmptyForEmptyInput(): void
+    {
+        $this->assertSame('', extractTableContentFromString(''));
+    }
+
+    public function testExtractTableContentFromStringReturnsEmptyWhenNoTable(): void
+    {
+        $this->assertSame('', extractTableContentFromString('<html><body><p>no table</p></body></html>'));
+    }
+
     public function testLoadProductsReturnsDecodedArray(): void
     {
         $dir = $this->makeTempDir();
