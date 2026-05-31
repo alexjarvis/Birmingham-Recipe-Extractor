@@ -267,6 +267,21 @@ final class FunctionsTest extends TestCase
                 '<p>+ 5 parts ml of water</p>',
                 [],
             ],
+            'comma-separated ingredients in one li (Voltaic Arc format)' => [
+                'voltaic-arc',
+                '<li><strong>Sample Recipe:</strong> 1 part Gunpowder, 1 part Tesla Coil</li>',
+                ['Gunpowder' => 1, 'Tesla Coil' => 1],
+            ],
+            'comma-separated with mixed quantities (Quantum Teal format)' => [
+                'quantum-teal',
+                '<li><strong>Sample Recipe:</strong> 4 parts Tesla Coil, 1 part Emerald Fusion</li>',
+                ['Tesla Coil' => 4, 'Emerald Fusion' => 1],
+            ],
+            'three comma-separated ingredients' => [
+                'three-comma',
+                '<li>2 parts Apple, 3 parts Banana, 5 parts Cherry</li>',
+                ['Apple' => 2, 'Banana' => 3, 'Cherry' => 5],
+            ],
         ];
     }
 

@@ -750,7 +750,10 @@ function parseRecipeComponents(string $recipeHtml): array {
     return $components;
   }
   $recipeHtml = str_replace("\xc2\xa0", ' ', $recipeHtml);
-  if (preg_match_all('/(?:<strong>\s*(\d+)\s*<\/strong>\s*|\+?\s*(\d+)\s*)\s*(?:parts?\s*)?(?:<a[^>]*>)?\s*([^<\n]+?)(?:<\/a>)?\s*(?=<\/p>|<br>|<\/li>|$)/i', $recipeHtml, $matches)) {
+  // Body capture excludes commas so that comma-separated ingredients within a
+  // single tag (e.g. "<li>1 part X, 1 part Y</li>", a Birmingham format
+  // introduced in May 2026) are split, not collapsed into one entry.
+  if (preg_match_all('/(?:<strong>\s*(\d+)\s*<\/strong>\s*|\+?\s*(\d+)\s*)\s*(?:parts?\s*)?(?:<a[^>]*>)?\s*([^<\n,]+?)(?:<\/a>)?\s*(?=<\/p>|<br>|<\/li>|,|$)/i', $recipeHtml, $matches)) {
     foreach ($matches[3] as $index => $name) {
       $quantity = (int) ($matches[1][$index] ?: $matches[2][$index]);
       $name = correctTypos(trim(html_entity_decode(strip_tags($name))));
