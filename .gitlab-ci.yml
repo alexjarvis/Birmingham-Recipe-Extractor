@@ -12,29 +12,51 @@ stages:
 # Requires CI/CD variable:
 #   - GITHUB_URL: https://alexjarvis:<TOKEN>@github.com/alexjarvis/birmingham-recipe-extractor.git
 
-# Pull gh-pages from GitHub (scheduled daily)
-sync-gh-pages-from-github:
+# Pull main and gh-pages from GitHub (scheduled daily)
+sync-from-github:
   stage: sync
   image: alpine/git
   script:
     - git config --global user.email "gitlab-ci@rivendell.fivedigitinteger.com"
     - git config --global user.name "GitLab CI"
     - git remote add github "${GITHUB_URL}" || true
-    - git fetch github gh-pages
-    - git fetch origin gh-pages || true
+    - git fetch github main gh-pages
+    - git fetch origin main gh-pages || true
     - |
-      LOCAL=$(git rev-parse origin/gh-pages 2>/dev/null || echo "none")
-      REMOTE=$(git rev-parse github/gh-pages 2>/dev/null || echo "none")
-      echo "Local gh-pages: $LOCAL"
-      echo "GitHub gh-pages: $REMOTE"
-      if [ "$LOCAL" != "$REMOTE" ]; then
-        echo "Changes detected - updating GitLab gh-pages branch"
+      # Check main branch (fast-forward only: GitLab is normally the source of
+      # truth, push-main-to-github mirrors to GitHub. Only sync the reverse
+      # direction if GitHub is strictly ahead, never if GitLab is ahead or
+      # branches have diverged.)
+      LOCAL_MAIN=$(git rev-parse origin/main 2>/dev/null || echo "none")
+      REMOTE_MAIN=$(git rev-parse github/main 2>/dev/null || echo "none")
+      echo "GitLab main: $LOCAL_MAIN"
+      echo "GitHub main: $REMOTE_MAIN"
+      if [ "$LOCAL_MAIN" = "$REMOTE_MAIN" ]; then
+        echo "main: No changes"
+      elif git merge-base --is-ancestor "$LOCAL_MAIN" "$REMOTE_MAIN"; then
+        echo "main: GitHub is ahead - fast-forwarding GitLab"
+        git checkout -B main github/main
+        git push "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" main
+      elif git merge-base --is-ancestor "$REMOTE_MAIN" "$LOCAL_MAIN"; then
+        echo "main: GitLab is ahead of GitHub - skipping (push-main-to-github will mirror)"
+      else
+        echo "main: BRANCHES DIVERGED - manual intervention required" >&2
+        exit 1
+      fi
+    - |
+      # Check gh-pages branch
+      LOCAL_PAGES=$(git rev-parse origin/gh-pages 2>/dev/null || echo "none")
+      REMOTE_PAGES=$(git rev-parse github/gh-pages 2>/dev/null || echo "none")
+      echo "GitLab gh-pages: $LOCAL_PAGES"
+      echo "GitHub gh-pages: $REMOTE_PAGES"
+      if [ "$LOCAL_PAGES" != "$REMOTE_PAGES" ]; then
+        echo "gh-pages: Changes detected - updating GitLab"
         git checkout -B gh-pages github/gh-pages
         git push -f "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" gh-pages
-        echo "SYNC_CHANGED=true" >> sync.env
+        echo "PAGES_CHANGED=true" >> sync.env
       else
-        echo "No changes detected"
-        echo "SYNC_CHANGED=false" >> sync.env
+        echo "gh-pages: No changes"
+        echo "PAGES_CHANGED=false" >> sync.env
       fi
   artifacts:
     reports:
@@ -47,7 +69,7 @@ pages-after-sync:
   stage: deploy
   image: alpine:latest
   needs:
-    - job: sync-gh-pages-from-github
+    - job: sync-from-github
       artifacts: true
   script:
     - apk add --no-cache git
@@ -61,7 +83,7 @@ pages-after-sync:
       - public
     expire_in: 1 hour
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $SYNC_CHANGED == "true"
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $PAGES_CHANGED == "true"
 
 # Push main to GitHub (on commits to main)
 push-main-to-github:
