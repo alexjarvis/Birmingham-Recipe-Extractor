@@ -545,6 +545,40 @@ final class FunctionsTest extends TestCase
         $this->assertStringContainsString('+ 8 more', $html);
     }
 
+    public function testGenerateHTMLComputesCaptureRateFromTotalTagged(): void
+    {
+        $enrichedProducts = array_map(
+            fn($i) => ['handle' => "h$i", 'title' => "T$i", 'recipe_components' => ['X' => 1]],
+            range(1, 60)
+        );
+        $allIngredients = ['X'];
+        $ingredientTotals = ['X' => 60];
+
+        $html = generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, [], 150);
+
+        // 60/150 = 40%
+        $this->assertMatchesRegularExpression('/stat-value">40%?<.*?stat-label">Captured/s', $html);
+    }
+
+    public function testGenerateHTMLDefaultsTo100PercentWhenTotalTaggedOmitted(): void
+    {
+        $enrichedProducts = [
+            ['handle' => 'a', 'title' => 'A', 'recipe_components' => ['X' => 1]],
+            ['handle' => 'b', 'title' => 'B', 'recipe_components' => ['X' => 1]],
+        ];
+
+        $html = generateHTML($enrichedProducts, ['X'], ['X' => 2], []);
+
+        $this->assertMatchesRegularExpression('/stat-value">100%?<.*?stat-label">Captured/s', $html);
+    }
+
+    public function testGenerateHTMLAvoidsDivisionByZero(): void
+    {
+        $html = generateHTML([], [], [], [], 0);
+
+        $this->assertMatchesRegularExpression('/stat-value">0%?<.*?stat-label">Captured/s', $html);
+    }
+
     private function makeTempDir(): string
     {
         $dir = sys_get_temp_dir() . '/bre_test_' . bin2hex(random_bytes(8));

@@ -77,17 +77,25 @@ function createHttpContext() {
   ]);
 }
 
+const IMAGE_DOWNLOAD_TIMEOUT_SECONDS = 30;
+
 /**
  * Helper function to download images if they don't already exist
  *
- * @param $imageUrl
- * @param $imagePath
+ * @param string $imageUrl
+ * @param string $imagePath
+ * @param callable|null $fetcher fn(string $url): string|false  Optional override for tests.
  *
  * @return void
  */
 function downloadImageIfNeeded($imageUrl, $imagePath, ?callable $fetcher = null) {
   if (!file_exists($imagePath)) {
-    $fetcher ??= fn(string $url): string|false => file_get_contents($url);
+    $fetcher ??= function (string $url): string|false {
+      // Bound the request — without a timeout, a slow CDN can hang the run.
+      return @file_get_contents($url, FALSE, stream_context_create([
+        'http' => ['timeout' => IMAGE_DOWNLOAD_TIMEOUT_SECONDS],
+      ]));
+    };
     try {
       $imageData = $fetcher($imageUrl);
       if ($imageData === FALSE) {
@@ -286,15 +294,16 @@ function generateFooterRow($label, $data): string {
  * @param $allIngredients
  * @param $ingredientTotals
  * @param $productImages
+ * @param int|null $totalTagged Number of products that *should* have a recipe (denominator for the capture-rate stat). Defaults to count($enrichedProducts), i.e. assumes 100% capture when not specified.
  *
  * @return string
  */
-function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages): string {
+function generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages, ?int $totalTagged = null): string {
   $generationDate = date('F j, Y');
   $recipeCount = count($enrichedProducts);
   $ingredientCount = count($allIngredients);
-  $totalTagged = 146; // From extraction analysis
-  $captureRate = round(($recipeCount / $totalTagged) * 100, 1);
+  $totalTagged ??= $recipeCount;
+  $captureRate = $totalTagged > 0 ? round(($recipeCount / $totalTagged) * 100, 1) : 0;
 
   // Start HTML
   $html = '<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8">';

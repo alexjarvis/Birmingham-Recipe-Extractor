@@ -13,6 +13,14 @@ try {
 
   // Load products and process
   $products = loadProducts(ENRICHED_PRODUCTS_FILE);
+
+  // Total products that should have a recipe (recipe-tagged or "Ink Recipe" in body_html).
+  // Used as the denominator for the capture-rate stat — the numerator is what we actually extracted.
+  $totalTagged = count(array_filter($products, fn($p) =>
+    in_array('recipe', $p['tags'] ?? [], TRUE)
+    || strpos($p['body_html'] ?? '', 'Ink Recipe') !== FALSE
+  ));
+
   [
     $enrichedProducts,
     $ingredientTotals,
@@ -27,7 +35,7 @@ try {
   echo "Unique ingredients: " . count($allIngredients) . "\n";
 
   // Generate the HTML content
-  $html = generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages);
+  $html = generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages, $totalTagged);
 
   // Prettify the HTML output
   $prettyHtml = prettifyHTML($html);

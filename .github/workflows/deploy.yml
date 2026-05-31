@@ -57,11 +57,18 @@ jobs:
         with:
           php-version: '8.3'
 
-      # Step 6: Run the PHP script to generate HTML
+      # Step 6: Install dev dependencies and run tests
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run unit tests
+        run: ./vendor/bin/phpunit
+
+      # Step 7: Run the PHP script to generate HTML
       - name: Run the script to generate HTML
         run: php run.php
 
-      # Step 7: Deploy to GitHub Pages
+      # Step 8: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:

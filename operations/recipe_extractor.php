@@ -86,8 +86,6 @@ try {
     $enrichedProducts[] = $enrichedProduct;
   }
 
-  file_put_contents(ENRICHED_PRODUCTS_FILE, json_encode($enrichedProducts, JSON_PRETTY_PRINT));
-
   echo "\nSummary:\n";
   echo "  Total products processed: " . count($products) . "\n";
   echo "  Products with recipes: $recipesFound\n";
@@ -107,6 +105,10 @@ try {
       ));
     }
   }
+
+  // Only write the enriched data once we know the run is good — otherwise
+  // a partial file lingers and downstream steps publish a degraded snapshot.
+  file_put_contents(ENRICHED_PRODUCTS_FILE, json_encode($enrichedProducts, JSON_PRETTY_PRINT));
   echo "  Enriched data written to " . ENRICHED_PRODUCTS_FILE . PHP_EOL;
 }
 catch (Exception $e) {
