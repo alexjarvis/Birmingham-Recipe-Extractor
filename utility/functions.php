@@ -71,8 +71,9 @@ const IMAGE_DOWNLOAD_TIMEOUT_SECONDS = 30;
  * Helper function to download images if they don't already exist
  *
  * @param callable|null $fetcher fn(string $url): string|false  Optional override for tests.
+ * @param callable|null $logger fn(string $message): void  Optional log sink. Defaults to stdout.
  */
-function downloadImageIfNeeded(string $imageUrl, string $imagePath, ?callable $fetcher = null): void {
+function downloadImageIfNeeded(string $imageUrl, string $imagePath, ?callable $fetcher = null, ?callable $logger = null): void {
   if (!file_exists($imagePath)) {
     $fetcher ??= function (string $url): string|false {
       // Bound the request — without a timeout, a slow CDN can hang the run.
@@ -80,16 +81,17 @@ function downloadImageIfNeeded(string $imageUrl, string $imagePath, ?callable $f
         'http' => ['timeout' => IMAGE_DOWNLOAD_TIMEOUT_SECONDS],
       ]));
     };
+    $logger ??= fn(string $m) => print($m . PHP_EOL);
     try {
       $imageData = $fetcher($imageUrl);
       if ($imageData === FALSE) {
         throw new Exception("Failed to download image: $imageUrl");
       }
       file_put_contents($imagePath, $imageData);
-      echo "Downloaded: $imagePath" . PHP_EOL;
+      $logger("Downloaded: $imagePath");
     }
     catch (Exception $e) {
-      echo "Error downloading image: " . $e->getMessage() . PHP_EOL;
+      $logger("Error downloading image: " . $e->getMessage());
     }
   }
 }
@@ -130,33 +132,35 @@ function extractTableContentFromString(string $html): string {
 /**
  * @param callable|null $fetcher fn(int $page): array  Optional override for tests.
  * @param callable|null $sleeper fn(int $seconds): void  Optional override for tests.
+ * @param callable|null $logger fn(string $message): void  Optional log sink. Defaults to stdout.
  * @return array<int, array<string, mixed>>
  */
-function fetchAllProducts(?callable $fetcher = null, ?callable $sleeper = null): array {
+function fetchAllProducts(?callable $fetcher = null, ?callable $sleeper = null, ?callable $logger = null): array {
+  $logger ??= fn(string $m) => print($m . PHP_EOL);
   $allProducts = [];
   $page = 1;
 
   while (TRUE) {
     try {
-      $products = fetchPage($page, $fetcher, $sleeper);
+      $products = fetchPage($page, $fetcher, $sleeper, $logger);
       if (empty($products)) {
-        echo "No more products found on page $page. Stopping." . PHP_EOL;
+        $logger("No more products found on page $page. Stopping.");
         break;
       }
 
       $productCount = count($products);
-      echo "Retrieved $productCount products from page $page" . PHP_EOL;
+      $logger("Retrieved $productCount products from page $page");
       $allProducts = array_merge($allProducts, $products);
       $page++;
     }
     catch (Exception $e) {
-      echo "Error fetching products: " . $e->getMessage() . PHP_EOL;
+      $logger("Error fetching products: " . $e->getMessage());
       break;
     }
   }
 
   $totalProducts = count($allProducts);
-  echo "Total products fetched: $totalProducts" . PHP_EOL;
+  $logger("Total products fetched: $totalProducts");
   return $allProducts;
 }
 
@@ -165,19 +169,21 @@ function fetchAllProducts(?callable $fetcher = null, ?callable $sleeper = null):
  *
  * @param callable|null $fetcher fn(string $url): string|false
  * @param callable|null $sleeper fn(int $seconds): void
+ * @param callable|null $logger fn(string $message): void  Optional log sink. Defaults to stdout.
  *
  * @return array<int, array<string, mixed>>
  * @throws \Exception
  */
-function fetchPage(int $page, ?callable $fetcher = null, ?callable $sleeper = null): array {
+function fetchPage(int $page, ?callable $fetcher = null, ?callable $sleeper = null, ?callable $logger = null): array {
   $fetcher ??= fn(string $url): string|false => file_get_contents($url, FALSE, createHttpContext());
   $sleeper ??= 'sleep';
+  $logger ??= fn(string $m) => print($m . PHP_EOL);
   $retries = 0;
 
   while ($retries < FETCH_MAX_RETRIES) {
     try {
       $url = PRODUCTS_URL . '?page=' . $page . '&limit=' . FETCH_LIMIT;
-      echo "Fetching page $page from: $url" . PHP_EOL;
+      $logger("Fetching page $page from: $url");
       $response = $fetcher($url);
 
       if ($response === FALSE) {
@@ -189,7 +195,7 @@ function fetchPage(int $page, ?callable $fetcher = null, ?callable $sleeper = nu
     }
     catch (Exception $e) {
       $retries++;
-      echo "Attempt $retries failed for page $page: " . $e->getMessage() . PHP_EOL;
+      $logger("Attempt $retries failed for page $page: " . $e->getMessage());
       if ($retries >= FETCH_MAX_RETRIES) {
         throw new Exception("Max retries reached for page $page: " . $e->getMessage());
       }
@@ -273,7 +279,105 @@ function generateFooterRow(string $label, array $data): string {
 }
 
 /**
- * Generate HTML for the complete table with an archive link
+ * Generate the <head> section and opening <body> tag.
+ */
+function generateDocumentHead(string $generationDate): string {
+  return '<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8">'
+    . '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+    . '<title>Birmingham Ink Recipes - ' . $generationDate . '</title>'
+    . '<link rel="stylesheet" href="../template/styles.css">'
+    . '</head><body>';
+}
+
+/**
+ * Generate the page header with gradient, stats bar, theme toggle, and archive link.
+ */
+function generatePageHeader(string $generationDate, int $recipeCount, int $ingredientCount, float $captureRate): string {
+  return '<header>'
+    . '<div class="header-content">'
+    . '<div class="header-top">'
+    . '<div><h1>Birmingham Ink Recipes</h1><div class="header-date">Updated ' . $generationDate . '</div></div>'
+    . '<div class="header-actions">'
+    . '<div class="theme-toggle" id="themeToggle"></div>'
+    . '<a href="index.html" class="btn btn-icon" title="Archive">🗂️</a>'
+    . '</div></div>'
+    . '<div class="stats-bar">'
+    . '<div class="stat"><div><div class="stat-value">' . $recipeCount . '</div><div class="stat-label">Recipes</div></div></div>'
+    . '<div class="stat"><div><div class="stat-value">' . $ingredientCount . '</div><div class="stat-label">Ingredients</div></div></div>'
+    . '<div class="stat"><div><div class="stat-value">' . $captureRate . '%</div><div class="stat-label">Captured</div></div></div>'
+    . '</div></div></header>';
+}
+
+/**
+ * Generate the search input + view-toggle controls.
+ */
+function generateSearchControls(): string {
+  return '<div class="controls"><div class="controls-grid">'
+    . '<div class="search-wrapper"><span class="search-icon">🔍</span>'
+    . '<input type="text" class="search-input" placeholder="Search recipes by name or ingredient..." id="searchInput"></div>'
+    . '<div class="view-toggle">'
+    . '<button class="view-btn" data-view="cards">Cards</button>'
+    . '<button class="view-btn active" data-view="table">Table</button>'
+    . '</div></div></div>';
+}
+
+/**
+ * Generate the filter pills section (top 12 ingredients + remainder count).
+ *
+ * @param array<int, string> $allIngredients
+ */
+function generateFilterPills(array $allIngredients): string {
+  $html = '<div class="filter-section"><div class="filter-title">Filter by Ingredient</div><div class="filter-pills">';
+  $topIngredients = array_slice($allIngredients, 0, 12);
+  foreach ($topIngredients as $ingredient) {
+    $html .= '<div class="filter-pill">' . htmlspecialchars($ingredient) . '</div>';
+  }
+  if (count($allIngredients) > 12) {
+    $remaining = count($allIngredients) - 12;
+    $html .= '<div class="filter-pill">+ ' . $remaining . ' more</div>';
+  }
+  $html .= '</div></div>';
+  return $html;
+}
+
+/**
+ * Generate the card-view container with one recipe card per product.
+ *
+ * @param array<int, array<string, mixed>> $enrichedProducts
+ * @param array<string, string> $productImages
+ */
+function generateCardView(array $enrichedProducts, array $productImages): string {
+  $html = '<div id="cardView" class="card-grid hidden">';
+  foreach ($enrichedProducts as $product) {
+    $html .= generateRecipeCard($product, $productImages);
+  }
+  $html .= '</div>';
+  return $html;
+}
+
+/**
+ * Generate the table-view container with header, body rows, and footer.
+ *
+ * @param array<int, array<string, mixed>> $enrichedProducts
+ * @param array<int, string> $allIngredients
+ * @param array<string, int> $ingredientTotals
+ * @param array<string, string> $productImages
+ */
+function generateTableView(array $enrichedProducts, array $allIngredients, array $ingredientTotals, array $productImages): string {
+  $html = '<div id="tableView" class="table-wrapper"><div class="table-scroll"><table>';
+  $html .= generateTableHeader($allIngredients, $productImages);
+  $html .= '<tbody>';
+  foreach ($enrichedProducts as $product) {
+    $html .= generateTableRow($product, $allIngredients, $productImages);
+  }
+  $html .= '</tbody>';
+  $html .= generateTableFooter($allIngredients, $enrichedProducts, $ingredientTotals);
+  $html .= '</table></div></div>';
+  return $html;
+}
+
+/**
+ * Generate HTML for the complete recipe page.
  *
  * @param array<int, array<string, mixed>> $enrichedProducts
  * @param array<int, string> $allIngredients
@@ -288,79 +392,16 @@ function generateHTML(array $enrichedProducts, array $allIngredients, array $ing
   $totalTagged ??= $recipeCount;
   $captureRate = $totalTagged > 0 ? round(($recipeCount / $totalTagged) * 100, 1) : 0;
 
-  // Start HTML
-  $html = '<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8">';
-  $html .= '<meta name="viewport" content="width=device-width, initial-scale=1.0">';
-  $html .= '<title>Birmingham Ink Recipes - ' . $generationDate . '</title>';
-  $html .= '<link rel="stylesheet" href="../template/styles.css">';
-  $html .= '</head><body>';
-
-  // Header with gradient, stats, and actions
-  $html .= '<header>';
-  $html .= '<div class="header-content">';
-  $html .= '<div class="header-top">';
-  $html .= '<div><h1>Birmingham Ink Recipes</h1><div class="header-date">Updated ' . $generationDate . '</div></div>';
-  $html .= '<div class="header-actions">';
-  $html .= '<div class="theme-toggle" id="themeToggle"></div>';
-  $html .= '<a href="index.html" class="btn btn-icon" title="Archive">🗂️</a>';
-  $html .= '</div></div>';
-
-  // Stats bar
-  $html .= '<div class="stats-bar">';
-  $html .= '<div class="stat"><div><div class="stat-value">' . $recipeCount . '</div><div class="stat-label">Recipes</div></div></div>';
-  $html .= '<div class="stat"><div><div class="stat-value">' . $ingredientCount . '</div><div class="stat-label">Ingredients</div></div></div>';
-  $html .= '<div class="stat"><div><div class="stat-value">' . $captureRate . '%</div><div class="stat-label">Captured</div></div></div>';
-  $html .= '</div></div></header>';
-
-  // Main content
-  $html .= '<main>';
-
-  // Controls
-  $html .= '<div class="controls"><div class="controls-grid">';
-  $html .= '<div class="search-wrapper"><span class="search-icon">🔍</span>';
-  $html .= '<input type="text" class="search-input" placeholder="Search recipes by name or ingredient..." id="searchInput"></div>';
-  $html .= '<div class="view-toggle">';
-  $html .= '<button class="view-btn" data-view="cards">Cards</button>';
-  $html .= '<button class="view-btn active" data-view="table">Table</button>';
-  $html .= '</div></div></div>';
-
-  // Filter section with ingredient pills (show top 12 ingredients)
-  $html .= '<div class="filter-section"><div class="filter-title">Filter by Ingredient</div><div class="filter-pills">';
-  $topIngredients = array_slice($allIngredients, 0, 12);
-  foreach ($topIngredients as $ingredient) {
-    $html .= '<div class="filter-pill">' . htmlspecialchars($ingredient) . '</div>';
-  }
-  if (count($allIngredients) > 12) {
-    $remaining = count($allIngredients) - 12;
-    $html .= '<div class="filter-pill">+ ' . $remaining . ' more</div>';
-  }
-  $html .= '</div></div>';
-
-  // Card View
-  $html .= '<div id="cardView" class="card-grid hidden">';
-  foreach ($enrichedProducts as $product) {
-    $html .= generateRecipeCard($product, $productImages);
-  }
-  $html .= '</div>';
-
-  // Table View
-  $html .= '<div id="tableView" class="table-wrapper"><div class="table-scroll"><table>';
-  $html .= generateTableHeader($allIngredients, $productImages);
-  $html .= '<tbody>';
-  foreach ($enrichedProducts as $product) {
-    $html .= generateTableRow($product, $allIngredients, $productImages);
-  }
-  $html .= '</tbody>';
-  $html .= generateTableFooter($allIngredients, $enrichedProducts, $ingredientTotals);
-  $html .= '</table></div></div>';
-
-  $html .= '</main>';
-
-  // Script
-  $html .= '<script src="../template/script.js"></script>';
-  $html .= '</body></html>';
-
-  return $html;
+  return generateDocumentHead($generationDate)
+    . generatePageHeader($generationDate, $recipeCount, $ingredientCount, $captureRate)
+    . '<main>'
+    . generateSearchControls()
+    . generateFilterPills($allIngredients)
+    . generateCardView($enrichedProducts, $productImages)
+    . generateTableView($enrichedProducts, $allIngredients, $ingredientTotals, $productImages)
+    . '</main>'
+    . '<script src="../template/script.js"></script>'
+    . '</body></html>';
 }
 
 /**

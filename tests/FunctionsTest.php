@@ -579,6 +579,85 @@ final class FunctionsTest extends TestCase
         $this->assertMatchesRegularExpression('/stat-value">0%?<.*?stat-label">Captured/s', $html);
     }
 
+    public function testGenerateDocumentHeadIncludesTitleAndStylesheet(): void
+    {
+        $head = generateDocumentHead('March 14, 2026');
+
+        $this->assertStringStartsWith('<!DOCTYPE html>', $head);
+        $this->assertStringContainsString('<title>Birmingham Ink Recipes - March 14, 2026</title>', $head);
+        $this->assertStringContainsString('href="../template/styles.css"', $head);
+        $this->assertStringContainsString('<body>', $head);
+    }
+
+    public function testGeneratePageHeaderEmbedsStats(): void
+    {
+        $header = generatePageHeader('March 14, 2026', 12, 5, 80.0);
+
+        $this->assertStringContainsString('Updated March 14, 2026', $header);
+        $this->assertStringContainsString('<div class="stat-value">12</div>', $header);
+        $this->assertStringContainsString('<div class="stat-value">5</div>', $header);
+        $this->assertStringContainsString('<div class="stat-value">80%</div>', $header);
+    }
+
+    public function testGenerateSearchControlsContainsSearchInputAndViewToggle(): void
+    {
+        $controls = generateSearchControls();
+
+        $this->assertStringContainsString('id="searchInput"', $controls);
+        $this->assertStringContainsString('data-view="cards"', $controls);
+        $this->assertStringContainsString('data-view="table"', $controls);
+    }
+
+    public function testGenerateFilterPillsRendersTopTwelve(): void
+    {
+        $ingredients = array_map(fn($n) => "Ingredient $n", range(1, 5));
+
+        $html = generateFilterPills($ingredients);
+
+        foreach ($ingredients as $i) {
+            $this->assertStringContainsString($i, $html);
+        }
+        $this->assertStringNotContainsString('+ ', $html, 'no "X more" pill when ≤ 12 ingredients');
+    }
+
+    public function testGenerateFilterPillsTruncatesAndShowsRemainder(): void
+    {
+        $ingredients = array_map(fn($n) => "Ingredient $n", range(1, 15));
+
+        $html = generateFilterPills($ingredients);
+
+        $this->assertStringContainsString('Ingredient 1', $html);
+        $this->assertStringContainsString('Ingredient 12', $html);
+        $this->assertStringNotContainsString('Ingredient 13', $html);
+        $this->assertStringContainsString('+ 3 more', $html);
+    }
+
+    public function testGenerateCardViewWrapsCardsInGrid(): void
+    {
+        $products = [
+            ['handle' => 'a', 'title' => 'A', 'recipe_components' => []],
+            ['handle' => 'b', 'title' => 'B', 'recipe_components' => []],
+        ];
+
+        $html = generateCardView($products, []);
+
+        $this->assertStringStartsWith('<div id="cardView"', $html);
+        $this->assertSame(2, substr_count($html, 'class="recipe-card"'));
+    }
+
+    public function testGenerateTableViewIncludesHeaderBodyAndFooter(): void
+    {
+        $products = [['handle' => 'a', 'title' => 'A', 'recipe_components' => ['X' => 4]]];
+
+        $html = generateTableView($products, ['X'], ['X' => 4], []);
+
+        $this->assertStringContainsString('<table>', $html);
+        $this->assertStringContainsString('<thead>', $html);
+        $this->assertStringContainsString('<tbody>', $html);
+        $this->assertStringContainsString('<tfoot>', $html);
+        $this->assertStringContainsString('Recipe Count', $html);
+    }
+
     private function makeTempDir(): string
     {
         $dir = sys_get_temp_dir() . '/bre_test_' . bin2hex(random_bytes(8));
@@ -821,13 +900,14 @@ final class FunctionsTest extends TestCase
         try {
             $imagePath = $dir . '/image.png';
             $fetcher = fn(string $url): string => 'image-bytes-' . $url;
+            $logs = [];
+            $logger = function (string $m) use (&$logs): void { $logs[] = $m; };
 
-            ob_start();
-            downloadImageIfNeeded('https://example.test/x.png', $imagePath, $fetcher);
-            ob_end_clean();
+            downloadImageIfNeeded('https://example.test/x.png', $imagePath, $fetcher, $logger);
 
             $this->assertFileExists($imagePath);
             $this->assertSame('image-bytes-https://example.test/x.png', file_get_contents($imagePath));
+            $this->assertContains('Downloaded: ' . $imagePath, $logs);
         } finally {
             $this->rmrf($dir);
         }
@@ -844,10 +924,9 @@ final class FunctionsTest extends TestCase
                 $called++;
                 return 'fresh-bytes';
             };
+            $logger = function (string $m): void {};
 
-            ob_start();
-            downloadImageIfNeeded('https://example.test/cached.png', $imagePath, $fetcher);
-            ob_end_clean();
+            downloadImageIfNeeded('https://example.test/cached.png', $imagePath, $fetcher, $logger);
 
             $this->assertSame(0, $called, 'fetcher must not be called when file already exists');
             $this->assertSame('preexisting', file_get_contents($imagePath));
@@ -862,13 +941,13 @@ final class FunctionsTest extends TestCase
         try {
             $imagePath = $dir . '/fail.png';
             $fetcher = fn(string $url): string|false => false;
+            $logs = [];
+            $logger = function (string $m) use (&$logs): void { $logs[] = $m; };
 
-            ob_start();
-            downloadImageIfNeeded('https://example.test/fail.png', $imagePath, $fetcher);
-            $output = ob_get_clean();
+            downloadImageIfNeeded('https://example.test/fail.png', $imagePath, $fetcher, $logger);
 
             $this->assertFileDoesNotExist($imagePath);
-            $this->assertStringContainsString('Failed to download image', $output);
+            $this->assertNotEmpty(array_filter($logs, fn($m) => str_contains($m, 'Failed to download image')));
         } finally {
             $this->rmrf($dir);
         }
@@ -878,23 +957,23 @@ final class FunctionsTest extends TestCase
     {
         $fetcher = fn(string $url): string => json_encode(['products' => [['id' => 1], ['id' => 2]]]);
         $sleeper = function (int $s): void {};
+        $logs = [];
+        $logger = function (string $m) use (&$logs): void { $logs[] = $m; };
 
-        ob_start();
-        $products = fetchPage(1, $fetcher, $sleeper);
-        ob_end_clean();
+        $products = fetchPage(1, $fetcher, $sleeper, $logger);
 
         $this->assertCount(2, $products);
         $this->assertSame(1, $products[0]['id']);
+        $this->assertNotEmpty($logs, 'logger should receive at least the "Fetching page" line');
     }
 
     public function testFetchPageReturnsEmptyArrayWhenProductsKeyMissing(): void
     {
         $fetcher = fn(string $url): string => json_encode(['other' => 'data']);
         $sleeper = function (int $s): void {};
+        $logger = function (string $m): void {};
 
-        ob_start();
-        $products = fetchPage(1, $fetcher, $sleeper);
-        ob_end_clean();
+        $products = fetchPage(1, $fetcher, $sleeper, $logger);
 
         $this->assertSame([], $products);
     }
@@ -909,10 +988,9 @@ final class FunctionsTest extends TestCase
         };
         $sleeps = [];
         $sleeper = function (int $s) use (&$sleeps): void { $sleeps[] = $s; };
+        $logger = function (string $m): void {};
 
-        ob_start();
-        $products = fetchPage(1, $fetcher, $sleeper);
-        ob_end_clean();
+        $products = fetchPage(1, $fetcher, $sleeper, $logger);
 
         $this->assertSame(99, $products[0]['id']);
         $this->assertSame(3, $i);
@@ -922,18 +1000,13 @@ final class FunctionsTest extends TestCase
     public function testFetchPageThrowsAfterMaxRetries(): void
     {
         $fetcher = fn(string $url): string|false => false;
-        $sleeps = [];
-        $sleeper = function (int $s) use (&$sleeps): void { $sleeps[] = $s; };
+        $sleeper = function (int $s): void {};
+        $logger = function (string $m): void {};
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Max retries reached for page 1');
 
-        try {
-            ob_start();
-            fetchPage(1, $fetcher, $sleeper);
-        } finally {
-            ob_end_clean();
-        }
+        fetchPage(1, $fetcher, $sleeper, $logger);
     }
 
     public function testFetchPageBackoffIsExponential(): void
@@ -941,14 +1014,12 @@ final class FunctionsTest extends TestCase
         $fetcher = fn(string $url): string|false => false;
         $sleeps = [];
         $sleeper = function (int $s) use (&$sleeps): void { $sleeps[] = $s; };
+        $logger = function (string $m): void {};
 
         try {
-            ob_start();
-            fetchPage(1, $fetcher, $sleeper);
+            fetchPage(1, $fetcher, $sleeper, $logger);
         } catch (Exception $e) {
             // expected
-        } finally {
-            ob_end_clean();
         }
 
         // Backoff goes 2, 4, 8, 16 between attempts 1→2, 2→3, 3→4, 4→5; the 5th
@@ -964,16 +1035,14 @@ final class FunctionsTest extends TestCase
             3 => ['products' => []],
         ];
         $fetcher = function (string $url) use ($pageData): string {
-            // URL has ?page=N&limit=M — extract the page number
             preg_match('/[?&]page=(\d+)/', $url, $m);
             $page = (int) $m[1];
             return json_encode($pageData[$page] ?? ['products' => []]);
         };
         $sleeper = function (int $s): void {};
+        $logger = function (string $m): void {};
 
-        ob_start();
-        $all = fetchAllProducts($fetcher, $sleeper);
-        ob_end_clean();
+        $all = fetchAllProducts($fetcher, $sleeper, $logger);
 
         $this->assertCount(3, $all);
         $this->assertSame([1, 2, 3], array_column($all, 'id'));
@@ -983,10 +1052,9 @@ final class FunctionsTest extends TestCase
     {
         $fetcher = fn(string $url): string|false => false;
         $sleeper = function (int $s): void {};
+        $logger = function (string $m): void {};
 
-        ob_start();
-        $all = fetchAllProducts($fetcher, $sleeper);
-        ob_end_clean();
+        $all = fetchAllProducts($fetcher, $sleeper, $logger);
 
         $this->assertSame([], $all, 'returns whatever was accumulated when fetchPage throws');
     }
