@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 
 require_once __DIR__ . '/../utility/functions.php';
 require_once __DIR__ . '/../config/config.php';
@@ -1178,11 +1179,24 @@ final class FunctionsTest extends TestCase
         $this->assertGreaterThan(0, $opts[CURLOPT_TIMEOUT], 'must have a non-zero timeout to prevent hung requests');
     }
 
-    public function testCurlFetchProductPageReturnsStatusAndBodyShape(): void
+    public function testCurlFetchProductPageReportsFailedTransferAsStatusZeroAndFalseBody(): void
     {
-        // Integration smoke test against a known-good URL on the live site.
-        // The recipe-fetch curl options + Birmingham's storefront together
-        // should always return 200 and a body containing the metafield div.
+        // An unsupported scheme makes curl_exec fail before any socket or proxy
+        // is involved, so this stays hermetic. It pins the wrapper's contract
+        // that fetchProductPage() relies on: a failed transfer is status 0 with
+        // a body of false, never a stray true.
+        $result = curlFetchProductPage('not-a-protocol://example.invalid/x');
+
+        $this->assertSame(0, $result['status']);
+        $this->assertFalse($result['body']);
+    }
+
+    #[Group('network')]
+    public function testCurlFetchProductPageFetchesRecipeMetafieldFromLiveSite(): void
+    {
+        // Canary for storefront markup drift, excluded from the default suite
+        // so a third-party redesign cannot block the scheduled deploy. Run it
+        // deliberately with: vendor/bin/phpunit --group network
         $result = curlFetchProductPage('https://www.birminghampens.com/products/diving-bell');
 
         $this->assertSame(200, $result['status']);

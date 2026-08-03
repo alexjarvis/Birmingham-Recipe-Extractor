@@ -16,6 +16,16 @@
         </testsuite>
     </testsuites>
 
+    <!-- Tests that hit the live storefront are opt-in: run them with
+         `vendor/bin/phpunit` plus the "group network" flag. Keeping them out
+         of the default suite stops a third-party markup change from blocking
+         the deploy. -->
+    <groups>
+        <exclude>
+            <group>network</group>
+        </exclude>
+    </groups>
+
     <source ignoreIndirectDeprecations="true" restrictNotices="true" restrictWarnings="true">
         <include>
             <directory>utility</directory>
