@@ -111,3 +111,45 @@ function parseArchiveSnapshot(string $html, string $date): array {
 
   return ['date' => $date, 'recipes' => $recipes, 'failed' => []];
 }
+
+/**
+ * Replay every *-recipes.html snapshot in $archiveDir, oldest first, through
+ * mergeScan() starting from an empty repository.
+ *
+ * @param callable|null $logger fn(string $message): void  Defaults to stdout.
+ * @return array{0: array<string, mixed>, 1: array<string, mixed>}  [repository, changelog]
+ * @throws \RuntimeException when the directory holds no snapshots
+ */
+function rebuildRepositoryFromArchive(string $archiveDir, ?callable $logger = NULL): array {
+  $logger ??= fn(string $m) => print($m . PHP_EOL);
+  $files = glob(rtrim($archiveDir, '/') . '/*-recipes.html') ?: [];
+  sort($files, SORT_STRING);
+  if ($files === []) {
+    throw new RuntimeException("No *-recipes.html snapshots found in $archiveDir");
+  }
+
+  $repository = emptyRepository();
+  $changelog = emptyChangelog();
+  foreach ($files as $file) {
+    if (!preg_match('/(\d{4}-\d{2}-\d{2})-recipes\.html$/', $file, $m)) {
+      continue;
+    }
+    $html = file_get_contents($file);
+    if ($html === FALSE) {
+      throw new RuntimeException("Failed to read $file");
+    }
+    $scan = parseArchiveSnapshot($html, $m[1]);
+    $result = mergeScan($repository, $changelog, $scan);
+    $repository = $result['repository'];
+    $changelog = $result['changelog'];
+    $logger(sprintf(
+      '%s: %d recipes in snapshot, +%d added, %d changed, %d unlisted',
+      $m[1],
+      count($scan['recipes']),
+      count($result['summary']['added']),
+      count($result['summary']['changed']),
+      count($result['summary']['unlisted'])
+    ));
+  }
+  return [$repository, $changelog];
+}

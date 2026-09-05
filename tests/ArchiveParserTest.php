@@ -186,4 +186,44 @@ final class ArchiveParserTest extends TestCase
         $this->expectException(RuntimeException::class);
         parseArchiveSnapshot('<html><body><p>nothing</p></body></html>', '2025-01-01');
     }
+
+    public function testRebuildReplaysSnapshotsInDateOrder(): void
+    {
+        $log = [];
+        [$repository, $changelog] = rebuildRepositoryFromArchive(
+            __DIR__ . '/fixtures/archive',
+            function (string $m) use (&$log): void { $log[] = $m; }
+        );
+
+        $this->assertSame(['abacus', 'gumball', 'kyanite'], array_keys($repository['recipes']));
+
+        $abacus = $repository['recipes']['abacus'];
+        $this->assertSame(['Airline' => 3, 'Dilution Solution' => 2], $abacus['components'], 'Diluent folded, latest formula wins');
+        $this->assertSame('2025-01-01', $abacus['first_seen']);
+        $this->assertSame('2025-03-01', $abacus['unlisted_on'], 'empty snapshot unlists everything');
+        $this->assertSame('Abacus.jpg', $abacus['image']);
+
+        $this->assertSame('2025-02-01', $repository['recipes']['kyanite']['unlisted_on']);
+        $this->assertSame(['Gunpowder' => 4, 'Tesla Coil' => 1], $repository['recipes']['gumball']['components']);
+
+        $this->assertSame(
+            [
+                ['2025-01-01', 'added', 'abacus'],
+                ['2025-01-01', 'added', 'kyanite'],
+                ['2025-02-01', 'changed', 'abacus'],
+                ['2025-02-01', 'added', 'gumball'],
+            ],
+            array_map(fn($e) => [$e['date'], $e['event'], $e['handle']], $changelog['events'])
+        );
+        $this->assertSame(['Airline' => 3, 'Dilution Solution' => 1], $changelog['events'][2]['from']);
+
+        $this->assertCount(3, $log);
+        $this->assertStringContainsString('2025-01-01', $log[0]);
+    }
+
+    public function testRebuildThrowsWhenNoSnapshotsFound(): void
+    {
+        $this->expectException(RuntimeException::class);
+        rebuildRepositoryFromArchive(sys_get_temp_dir() . '/no-such-dir-' . uniqid(), function (string $m): void {});
+    }
 }
