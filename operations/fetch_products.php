@@ -7,6 +7,9 @@ try {
   checkOutputDir(PRODUCTS_DIR);
 
   $allProducts = fetchAllProducts();
+  if ($allProducts === []) {
+    throw new RuntimeException('Storefront returned zero products; refusing to treat that as an empty catalogue.');
+  }
   $result = json_encode($allProducts, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
 
   if (file_put_contents(PRODUCTS_FILE, $result) !== FALSE) {

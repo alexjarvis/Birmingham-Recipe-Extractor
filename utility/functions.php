@@ -134,6 +134,7 @@ function extractTableContentFromString(string $html): string {
  * @param callable|null $sleeper fn(int $seconds): void  Optional override for tests.
  * @param callable|null $logger fn(string $message): void  Optional log sink. Defaults to stdout.
  * @return array<int, array<string, mixed>>
+ * @throws \Exception when a page fails after all retries
  */
 function fetchAllProducts(?callable $fetcher = null, ?callable $sleeper = null, ?callable $logger = null): array {
   $logger ??= fn(string $m) => print($m . PHP_EOL);
@@ -141,22 +142,19 @@ function fetchAllProducts(?callable $fetcher = null, ?callable $sleeper = null, 
   $page = 1;
 
   while (TRUE) {
-    try {
-      $products = fetchPage($page, $fetcher, $sleeper, $logger);
-      if (empty($products)) {
-        $logger("No more products found on page $page. Stopping.");
-        break;
-      }
-
-      $productCount = count($products);
-      $logger("Retrieved $productCount products from page $page");
-      $allProducts = array_merge($allProducts, $products);
-      $page++;
-    }
-    catch (Exception $e) {
-      $logger("Error fetching products: " . $e->getMessage());
+    // A page that fails after all retries throws. Swallowing it here used to
+    // return a partial list, which the merge would read as "these recipes are
+    // gone" — far worse than aborting the run and retrying tomorrow.
+    $products = fetchPage($page, $fetcher, $sleeper, $logger);
+    if (empty($products)) {
+      $logger("No more products found on page $page. Stopping.");
       break;
     }
+
+    $productCount = count($products);
+    $logger("Retrieved $productCount products from page $page");
+    $allProducts = array_merge($allProducts, $products);
+    $page++;
   }
 
   $totalProducts = count($allProducts);

@@ -1064,15 +1064,29 @@ final class FunctionsTest extends TestCase
         $this->assertSame([1, 2, 3], array_column($all, 'id'));
     }
 
-    public function testFetchAllProductsBreaksOnFetchException(): void
+    public function testFetchAllProductsThrowsWhenAPageFails(): void
     {
         $fetcher = fn(string $url): string|false => false;
         $sleeper = function (int $s): void {};
         $logger = function (string $m): void {};
 
-        $all = fetchAllProducts($fetcher, $sleeper, $logger);
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Max retries reached for page 1');
+        fetchAllProducts($fetcher, $sleeper, $logger);
+    }
 
-        $this->assertSame([], $all, 'returns whatever was accumulated when fetchPage throws');
+    public function testFetchAllProductsThrowsWhenALaterPageFails(): void
+    {
+        $fetcher = function (string $url): string|false {
+            preg_match('/[?&]page=(\d+)/', $url, $m);
+            return (int) $m[1] === 1 ? json_encode(['products' => [['id' => 1]]]) : false;
+        };
+        $sleeper = function (int $s): void {};
+        $logger = function (string $m): void {};
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('page 2');
+        fetchAllProducts($fetcher, $sleeper, $logger);
     }
 
     public function testProcessProductsExcludesProductsWithoutComponents(): void
