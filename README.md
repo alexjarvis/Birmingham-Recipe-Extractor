@@ -56,7 +56,7 @@ composer test                    # alias for phpunit
 composer lint                    # alias for phpstan
 ```
 
-PHP 8.3+ required. CI pins PHP 8.3.
+PHP 8.5+ required. CI pins PHP 8.5.
 
 ## Operational notes
 

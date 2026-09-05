@@ -1,12 +1,6 @@
-# Start with a minimal PHP image based on Alpine
-FROM php:8.3-cli-alpine
-
-# Install additional required packages
-RUN apk add --no-cache \
-    curl \
-    php-curl \
-    php-json \
-    php-dom
+# Official PHP CLI image on Alpine. It already ships curl, dom, json, and mbstring,
+# so no extra packages are needed.
+FROM php:8.5-cli-alpine
 
 # Set the working directory in the container
 WORKDIR /app
