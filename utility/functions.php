@@ -36,7 +36,8 @@ function cleanImageName(string $imageUrl): string {
 }
 
 /**
- * Correct known recipe typos.
+ * Correct known recipe typos and spelling variants. These are silent folds:
+ * the variant never appears on the page.
  */
 function correctTypos(string $name): string {
   $corrections = [
@@ -46,9 +47,42 @@ function correctTypos(string $name): string {
     'Teaberry Ice Crea' => 'Teaberry Ice Cream',
     'Diluent' => 'Dilution Solution',
     'Dilution' => 'Dilution Solution',
+    // Birmingham used three spellings for the same unreleased placeholder ink.
+    '(Unreleased Aomtink Element)' => '(Unreleased Element)',
+    '(Unreleased Atomink Element)' => '(Unreleased Element)',
   ];
 
   return $corrections[$name] ?? $name;
+}
+
+/**
+ * Products Birmingham renamed. Old name => current name. Unlike typo folds,
+ * the page shows the former name so long-time readers can still find it.
+ *
+ * @return array<string, string>
+ */
+function ingredientRenames(): array {
+  return [
+    'Gunpowder' => 'Flint',
+  ];
+}
+
+/**
+ * The one name an ingredient goes by everywhere in the repository and on the
+ * page: typo folds first, then renames.
+ */
+function canonicalIngredientName(string $name): string {
+  $name = correctTypos($name);
+  return ingredientRenames()[$name] ?? $name;
+}
+
+/**
+ * Former names of a canonical ingredient, for "formerly X" labels and search.
+ *
+ * @return array<int, string>
+ */
+function formerIngredientNames(string $canonical): array {
+  return array_keys(ingredientRenames(), $canonical, TRUE);
 }
 
 /**
@@ -287,19 +321,14 @@ function generateSearchControls(): string {
 }
 
 /**
- * Generate the filter pills section (top 12 ingredients + remainder count).
+ * Generate the filter pills section, one pill per ingredient.
  *
  * @param array<int, string> $allIngredients
  */
 function generateFilterPills(array $allIngredients): string {
   $html = '<div class="filter-section"><div class="filter-title">Filter by Ingredient</div><div class="filter-pills">';
-  $topIngredients = array_slice($allIngredients, 0, 12);
-  foreach ($topIngredients as $ingredient) {
-    $html .= '<div class="filter-pill">' . htmlspecialchars($ingredient) . '</div>';
-  }
-  if (count($allIngredients) > 12) {
-    $remaining = count($allIngredients) - 12;
-    $html .= '<div class="filter-pill">+ ' . $remaining . ' more</div>';
+  foreach ($allIngredients as $ingredient) {
+    $html .= '<div class="filter-pill" data-name="' . htmlspecialchars($ingredient) . '">' . htmlspecialchars($ingredient) . '</div>';
   }
   $html .= '</div></div>';
   return $html;
@@ -327,10 +356,11 @@ function generateCardView(array $enrichedProducts, array $productImages): string
  * @param array<int, string> $allIngredients
  * @param array<string, int> $ingredientTotals
  * @param array<string, string> $productImages
+ * @param array<string, string> $ingredientHandles  Ingredient name => storefront handle, when known.
  */
-function generateTableView(array $enrichedProducts, array $allIngredients, array $ingredientTotals, array $productImages): string {
+function generateTableView(array $enrichedProducts, array $allIngredients, array $ingredientTotals, array $productImages, array $ingredientHandles = []): string {
   $html = '<div id="tableView" class="table-wrapper"><div class="table-scroll"><table>';
-  $html .= generateTableHeader($allIngredients, $productImages);
+  $html .= generateTableHeader($allIngredients, $productImages, $ingredientHandles);
   $html .= '<tbody>';
   foreach ($enrichedProducts as $product) {
     $html .= generateTableRow($product, $allIngredients, $productImages);
@@ -349,8 +379,9 @@ function generateTableView(array $enrichedProducts, array $allIngredients, array
  * @param array<string, int> $ingredientTotals
  * @param array<string, string> $productImages
  * @param string|null $checkedDate  Human date of the scan; defaults to today.
+ * @param array<string, string> $ingredientHandles  Ingredient name => storefront handle, when known.
  */
-function generateHTML(array $enrichedProducts, array $allIngredients, array $ingredientTotals, array $productImages, ?string $checkedDate = NULL): string {
+function generateHTML(array $enrichedProducts, array $allIngredients, array $ingredientTotals, array $productImages, ?string $checkedDate = NULL, array $ingredientHandles = []): string {
   $checkedDate ??= date('F j, Y');
   $recipeCount = count($enrichedProducts);
   $ingredientCount = count($allIngredients);
@@ -362,7 +393,7 @@ function generateHTML(array $enrichedProducts, array $allIngredients, array $ing
     . generateSearchControls()
     . generateFilterPills($allIngredients)
     . generateCardView($enrichedProducts, $productImages)
-    . generateTableView($enrichedProducts, $allIngredients, $ingredientTotals, $productImages)
+    . generateTableView($enrichedProducts, $allIngredients, $ingredientTotals, $productImages, $ingredientHandles)
     . '</main>'
     . '<script src="../template/script.js"></script>'
     . '</body></html>';
@@ -399,7 +430,9 @@ function generateRecipeCard(array $product, array $productImages): string {
     $html .= '<div class="ingredients-list">';
     foreach ($product['recipe_components'] as $ingredient => $quantity) {
       $qtyClass = getQuantityClass($quantity);
-      $html .= '<span class="ingredient-badge ' . $qtyClass . '">';
+      $former = formerIngredientNames((string) $ingredient);
+      $html .= '<span class="ingredient-badge ' . $qtyClass . '" data-name="' . htmlspecialchars((string) $ingredient) . '"'
+        . ($former !== [] ? ' data-former="' . htmlspecialchars(implode(', ', $former)) . '"' : '') . '>';
       $html .= '<span>' . $quantity . '</span>';
       $html .= '<span>' . htmlspecialchars($ingredient) . '</span>';
       $html .= '</span>';
@@ -549,6 +582,44 @@ function repositoryImages(array $recipes, string $imageDir): array {
 }
 
 /**
+ * Ingredient name => absolute image path, from the repository's ingredient section.
+ *
+ * @param array<string, mixed> $repository
+ * @return array<string, string>
+ */
+function repositoryIngredientImages(array $repository, string $imageDir): array {
+  $images = [];
+  /** @var array<string, array<string, mixed>> $entries */
+  $entries = $repository['ingredients'] ?? [];
+  foreach ($entries as $name => $meta) {
+    $image = $meta['image'] ?? NULL;
+    if (is_string($image) && $image !== '') {
+      $images[(string) $name] = rtrim($imageDir, '/') . '/' . $image;
+    }
+  }
+  return $images;
+}
+
+/**
+ * Ingredient name => storefront handle, from the repository's ingredient section.
+ *
+ * @param array<string, mixed> $repository
+ * @return array<string, string>
+ */
+function repositoryIngredientHandles(array $repository): array {
+  $handles = [];
+  /** @var array<string, array<string, mixed>> $entries */
+  $entries = $repository['ingredients'] ?? [];
+  foreach ($entries as $name => $meta) {
+    $handle = $meta['handle'] ?? NULL;
+    if (is_string($handle) && $handle !== '') {
+      $handles[(string) $name] = $handle;
+    }
+  }
+  return $handles;
+}
+
+/**
  * Generate HTML footer for Recipe Count and Quantity Count
  *
  * @param array<int, string> $allIngredients
@@ -577,12 +648,18 @@ function generateTableFooter(array $allIngredients, array $enrichedProducts, arr
  *
  * @param array<int, string> $allIngredients
  * @param array<string, string> $productImages
+ * @param array<string, string> $ingredientHandles  Ingredient name => storefront handle; falls back to a slug of the name.
  */
-function generateTableHeader(array $allIngredients, array $productImages): string {
+function generateTableHeader(array $allIngredients, array $productImages, array $ingredientHandles = []): string {
   $headerHtml = '<thead><tr><th class="sortable">Product</th>';
   foreach ($allIngredients as $ingredient) {
-    $ingredientUrl = "https://www.birminghampens.com/products/" . urlencode(strtolower(str_replace(' ', '-', $ingredient)));
+    $handle = $ingredientHandles[$ingredient] ?? strtolower(str_replace(' ', '-', $ingredient));
+    $ingredientUrl = "https://www.birminghampens.com/products/" . urlencode($handle);
     $headerHtml .= '<th class="sortable"><a href="' . htmlspecialchars($ingredientUrl) . '" target="_blank">' . htmlspecialchars($ingredient);
+    $former = formerIngredientNames($ingredient);
+    if ($former !== []) {
+      $headerHtml .= '<span class="former-name">formerly ' . htmlspecialchars(implode(', ', $former)) . '</span>';
+    }
 
     if (isset($productImages[$ingredient])) {
       // Construct relative path for the image
@@ -808,12 +885,13 @@ function parseRecipeComponents(string $recipeHtml): array {
   if (preg_match_all('/(?:<strong>\s*(\d+)\s*<\/strong>\s*|\+?\s*(\d+)\s*)\s*(?:parts?\s*)?(?:<a[^>]*>)?\s*([^<\n,]+?)(?:<\/a>)?\s*(?=<\/p>|<br>|<\/li>|,|$)/i', $recipeHtml, $matches)) {
     foreach ($matches[3] as $index => $name) {
       $quantity = (int) ($matches[1][$index] ?: $matches[2][$index]);
-      $name = correctTypos(trim(html_entity_decode(strip_tags($name))));
+      $name = canonicalIngredientName(trim(html_entity_decode(strip_tags($name))));
       if (strlen($name) > 0 &&
           strlen($name) < 50 &&
           !preg_match('/\b(ml|volume|approximately|provide|standard|converter|refills?)\b/i', $name) &&
-          preg_match('/^[A-Z]/', $name)) {
-        $components[$name] = $quantity;
+          preg_match('/^[A-Z(]/', $name)) {
+        // Two source names can fold to one canonical name; keep the larger part count.
+        $components[$name] = max($components[$name] ?? 0, $quantity);
       }
     }
   }

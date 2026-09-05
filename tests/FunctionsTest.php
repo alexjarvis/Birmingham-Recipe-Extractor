@@ -54,9 +54,27 @@ final class FunctionsTest extends TestCase
             'Teaberry Ice Crea correction' => ['Teaberry Ice Crea', 'Teaberry Ice Cream'],
             'Diluent correction' => ['Diluent', 'Dilution Solution'],
             'Dilution correction' => ['Dilution', 'Dilution Solution'],
+            'unreleased placeholder variant 1' => ['(Unreleased Aomtink Element)', '(Unreleased Element)'],
+            'unreleased placeholder variant 2' => ['(Unreleased Atomink Element)', '(Unreleased Element)'],
             'no correction needed' => ['Blue Velvet', 'Blue Velvet'],
             'unknown name passes through' => ['Random Ink Name', 'Random Ink Name'],
         ];
+    }
+
+    public function testCanonicalIngredientNameAppliesTyposThenRenames(): void
+    {
+        $this->assertSame('Flint', canonicalIngredientName('Gunpowder'));
+        $this->assertSame('Flint', canonicalIngredientName('Flint'));
+        $this->assertSame('Dilution Solution', canonicalIngredientName('Diluent'));
+        $this->assertSame('(Unreleased Element)', canonicalIngredientName('(Unreleased Atomink Element)'));
+        $this->assertSame('Airline', canonicalIngredientName('Airline'));
+    }
+
+    public function testFormerIngredientNamesOnlyReportsRealRenames(): void
+    {
+        $this->assertSame(['Gunpowder'], formerIngredientNames('Flint'));
+        $this->assertSame([], formerIngredientNames('Airline'));
+        $this->assertSame([], formerIngredientNames('(Unreleased Element)'), 'placeholder folds are spelling variants, not renames');
     }
 
     #[DataProvider('quantityClassProvider')]
@@ -251,12 +269,12 @@ final class FunctionsTest extends TestCase
             'plus-prefix uppercase Parts' => [
                 'diving-bell',
                 '<p>+ 4 Parts Electron</p><p>+ 1 Part Gunpowder</p>',
-                ['Electron' => 4, 'Gunpowder' => 1],
+                ['Electron' => 4, 'Flint' => 1],
             ],
             'br-separated single paragraph (oil beetle)' => [
                 'oil-beetle',
                 "<p>2 Parts Electron<br>\n3 Parts Gunpowder</p>",
-                ['Electron' => 2, 'Gunpowder' => 3],
+                ['Electron' => 2, 'Flint' => 3],
             ],
             'applies typo correction (Sterling Siver → Silver)' => [
                 'alfalfa-typo',
@@ -271,7 +289,7 @@ final class FunctionsTest extends TestCase
             'comma-separated ingredients in one li (Voltaic Arc format)' => [
                 'voltaic-arc',
                 '<li><strong>Sample Recipe:</strong> 1 part Gunpowder, 1 part Tesla Coil</li>',
-                ['Gunpowder' => 1, 'Tesla Coil' => 1],
+                ['Flint' => 1, 'Tesla Coil' => 1],
             ],
             'comma-separated with mixed quantities (Quantum Teal format)' => [
                 'quantum-teal',
@@ -282,6 +300,16 @@ final class FunctionsTest extends TestCase
                 'three-comma',
                 '<li>2 parts Apple, 3 parts Banana, 5 parts Cherry</li>',
                 ['Apple' => 2, 'Banana' => 3, 'Cherry' => 5],
+            ],
+            'renamed ingredient is canonicalized' => [
+                'rename',
+                '<p>2 parts Gunpowder</p>',
+                ['Flint' => 2],
+            ],
+            'old and new name in one recipe keep the larger value' => [
+                'rename collision',
+                '<p>1 part Gunpowder<br>3 parts Flint</p>',
+                ['Flint' => 3],
             ],
         ];
     }
@@ -419,6 +447,16 @@ final class FunctionsTest extends TestCase
         $this->assertStringContainsString('qty-high', $html);
     }
 
+    public function testGenerateRecipeCardBadgesCarryDataAttributesForSearch(): void
+    {
+        $product = ['handle' => 'a', 'title' => 'A', 'recipe_components' => ['Flint' => 2, 'Airline' => 1]];
+
+        $html = generateRecipeCard($product, []);
+
+        $this->assertStringContainsString('<span class="ingredient-badge qty-low" data-name="Flint" data-former="Gunpowder">', $html);
+        $this->assertStringContainsString('<span class="ingredient-badge qty-low" data-name="Airline">', $html);
+    }
+
     public function testGenerateRecipeCardOmitsBadgesWhenNoComponents(): void
     {
         $product = ['handle' => 'foo', 'title' => 'Foo', 'recipe_components' => []];
@@ -510,6 +548,23 @@ final class FunctionsTest extends TestCase
         $this->assertStringContainsString('class="ingredient-img"', $html);
     }
 
+    public function testGenerateTableHeaderShowsFormerNameForRenamedIngredient(): void
+    {
+        $html = generateTableHeader(['Flint', 'Airline'], []);
+
+        $this->assertStringContainsString('Flint<span class="former-name">formerly Gunpowder</span>', $html);
+        $this->assertStringContainsString('https://www.birminghampens.com/products/flint', $html);
+        $this->assertSame(1, substr_count($html, 'former-name'));
+    }
+
+    public function testGenerateTableHeaderPrefersKnownHandleOverSlug(): void
+    {
+        $html = generateTableHeader(['Ice Age'], [], ['Ice Age' => 'ice-age-ink']);
+
+        $this->assertStringContainsString('https://www.birminghampens.com/products/ice-age-ink', $html);
+        $this->assertStringNotContainsString('products/ice-age"', $html);
+    }
+
     public function testGenerateTableFooterEmitsRecipeAndQuantityCounts(): void
     {
         $allIngredients = ['Electron', 'Hibiscus'];
@@ -548,16 +603,6 @@ final class FunctionsTest extends TestCase
         $this->assertMatchesRegularExpression('/stat-value">2<.*?stat-label">Ingredients/s', $html);
         $this->assertMatchesRegularExpression('/stat-value">2<.*?stat-label">On site now/s', $html);
         $this->assertStringNotContainsString('Captured', $html);
-    }
-
-    public function testGenerateHTMLShowsRemainingIngredientsPillWhenManyIngredients(): void
-    {
-        $allIngredients = array_map(fn($n) => "Ingredient$n", range(1, 20));
-        $ingredientTotals = array_combine($allIngredients, array_fill(0, 20, 1));
-
-        $html = generateHTML([], $allIngredients, $ingredientTotals, []);
-
-        $this->assertStringContainsString('+ 8 more', $html);
     }
 
     public function testGenerateDocumentHeadIncludesTitleAndStylesheet(): void
@@ -697,28 +742,27 @@ final class FunctionsTest extends TestCase
         $this->assertStringContainsString('data-view="table"', $controls);
     }
 
-    public function testGenerateFilterPillsRendersTopTwelve(): void
+    public function testGenerateFilterPillsRendersEveryIngredientWithoutRemainder(): void
     {
-        $ingredients = array_map(fn($n) => "Ingredient $n", range(1, 5));
+        $ingredients = array_map(fn($n) => "Ingredient$n", range(1, 20));
 
         $html = generateFilterPills($ingredients);
 
-        foreach ($ingredients as $i) {
-            $this->assertStringContainsString($i, $html);
-        }
-        $this->assertStringNotContainsString('+ ', $html, 'no "X more" pill when ≤ 12 ingredients');
+        $this->assertSame(20, substr_count($html, 'class="filter-pill"'));
+        $this->assertStringNotContainsString('more', $html);
+        $this->assertStringContainsString('<div class="filter-pill" data-name="Ingredient20">Ingredient20</div>', $html);
     }
 
-    public function testGenerateFilterPillsTruncatesAndShowsRemainder(): void
+    public function testRepositoryIngredientImagesAndHandles(): void
     {
-        $ingredients = array_map(fn($n) => "Ingredient $n", range(1, 15));
+        $repository = ['schema_version' => 2, 'recipes' => [], 'ingredients' => [
+            'Airline' => ['image' => 'Airline.jpg', 'handle' => 'airline'],
+            'Flint' => ['image' => null, 'handle' => 'flint'],
+            'Naples' => ['image' => 'Naples.jpg', 'handle' => null],
+        ]];
 
-        $html = generateFilterPills($ingredients);
-
-        $this->assertStringContainsString('Ingredient 1', $html);
-        $this->assertStringContainsString('Ingredient 12', $html);
-        $this->assertStringNotContainsString('Ingredient 13', $html);
-        $this->assertStringContainsString('+ 3 more', $html);
+        $this->assertSame(['Airline' => '/img/Airline.jpg', 'Naples' => '/img/Naples.jpg'], repositoryIngredientImages($repository, '/img'));
+        $this->assertSame(['Airline' => 'airline', 'Flint' => 'flint'], repositoryIngredientHandles($repository));
     }
 
     public function testGenerateCardViewWrapsCardsInGrid(): void

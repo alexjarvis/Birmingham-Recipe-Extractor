@@ -1,5 +1,5 @@
 {
-    "schema_version": 1,
+    "schema_version": 2,
     "recipes": {
         "abacus": {
             "title": "Abacus",
@@ -7,7 +7,7 @@
             "image": "Abacus.jpg",
             "components": {
                 "Dilution Solution": 3,
-                "Gunpowder": 2,
+                "Flint": 2,
                 "Ladybug": 2,
                 "Tiger Lily": 1
             },
@@ -59,7 +59,7 @@
             "image": "aluminum_oxide_2e22484a-c08a-4623-a7da-0a65eeda96cb.jpg",
             "components": {
                 "Electron": 1,
-                "Gunpowder": 9
+                "Flint": 9
             },
             "first_seen": "2024-11-09",
             "unlisted_on": null
@@ -69,7 +69,7 @@
             "handle": "amaranth",
             "image": "Amaranth.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Salt Water Taffy": 50
             },
             "first_seen": "2024-11-09",
@@ -109,7 +109,7 @@
             "image": "Antique_Sanguine_Dual.jpg",
             "components": {
                 "Dilution Solution": 9,
-                "Gunpowder": 4,
+                "Flint": 4,
                 "Ladybug": 40,
                 "Sterling Silver": 12,
                 "Tiger Lily": 3
@@ -202,7 +202,7 @@
             "handle": "blackberry-jam",
             "image": "blackberry_jam.jpg",
             "components": {
-                "Gunpowder": 2,
+                "Flint": 2,
                 "Hibiscus": 2,
                 "Teaberry Ice Cream": 5
             },
@@ -239,7 +239,7 @@
             "handle": "blue-ribbon",
             "image": "Blue_Ribbon.jpg",
             "components": {
-                "(Unreleased Atomink Element)": 1,
+                "(Unreleased Element)": 1,
                 "Electron": 1,
                 "Sterling Silver": 1
             },
@@ -252,7 +252,7 @@
             "image": "Boiler_Steam_4eea0ace-f3f7-4e48-96b7-c7ce0af2436f.jpg",
             "components": {
                 "Electron": 1,
-                "Gunpowder": 1
+                "Flint": 1
             },
             "first_seen": "2024-11-09",
             "unlisted_on": "2026-07-21"
@@ -273,7 +273,7 @@
             "handle": "bordeaux",
             "image": "Bordeaux_7a9563e8-5815-4871-adf8-6bc1b39b4eff.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Teaberry Ice Cream": 4
             },
             "first_seen": "2024-11-09",
@@ -309,7 +309,7 @@
             "handle": "burlywood",
             "image": "Burlywood_b9a808fb-9293-4be1-ab72-3b7bdb6037c9.jpg",
             "components": {
-                "Gunpowder": 2,
+                "Flint": 2,
                 "Tiger Lily": 5
             },
             "first_seen": "2024-11-09",
@@ -320,7 +320,7 @@
             "handle": "burnt-charcoal",
             "image": "burnt_charcoal.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Teaberry Ice Cream": 1
             },
             "first_seen": "2024-11-09",
@@ -331,7 +331,7 @@
             "handle": "butchers-broom",
             "image": "Butchers_Broom_35c11ed7-ac6d-4478-875a-ab4a3126722d.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Ladybug": 10
             },
             "first_seen": "2024-11-09",
@@ -342,7 +342,7 @@
             "handle": "byzantium",
             "image": "Byzantium.jpg",
             "components": {
-                "Gunpowder": 5,
+                "Flint": 5,
                 "Ladybug": 8,
                 "Waterwheel": 2
             },
@@ -425,7 +425,7 @@
             "image": "Cerulean.jpg",
             "components": {
                 "Airline": 5,
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Hibiscus": 5
             },
             "first_seen": "2024-11-09",
@@ -509,7 +509,7 @@
             "handle": "coking-coal",
             "image": "CokingCoal.jpg",
             "components": {
-                "Gunpowder": 9,
+                "Flint": 9,
                 "Salt Water Taffy": 1
             },
             "first_seen": "2024-11-09",
@@ -522,7 +522,7 @@
             "components": {
                 "Blossomed Lotus": 1,
                 "Electron": 1,
-                "Gunpowder": 1
+                "Flint": 1
             },
             "first_seen": "2024-11-09",
             "unlisted_on": "2026-07-21"
@@ -576,7 +576,7 @@
             "handle": "corroded-tin",
             "image": "corroded_tin.jpg",
             "components": {
-                "Gunpowder": 6,
+                "Flint": 6,
                 "Hibiscus": 1,
                 "Teaberry Ice Cream": 2
             },
@@ -628,7 +628,7 @@
             "image": "Diving_Bell.jpg",
             "components": {
                 "Electron": 4,
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Salt Water Taffy": 1,
                 "Sterling Silver": 4
             },
@@ -642,7 +642,7 @@
             "components": {
                 "Dilution Solution": 18,
                 "Electron": 44,
-                "Gunpowder": 28,
+                "Flint": 28,
                 "Ladybug": 3,
                 "Tiger Lily": 3
             },
@@ -655,7 +655,7 @@
             "image": "Eucalyptus_Stem.jpg",
             "components": {
                 "Dilution Solution": 9,
-                "Gunpowder": 4,
+                "Flint": 4,
                 "Hibiscus": 28,
                 "Ladybug": 7,
                 "Tiger Lily": 4
@@ -690,7 +690,7 @@
             "handle": "flagstone",
             "image": "Flagstone_728db2c9-41a5-43e2-8ab2-d3f495659f09.jpg",
             "components": {
-                "Gunpowder": 2,
+                "Flint": 2,
                 "Sterling Silver": 1
             },
             "first_seen": "2024-11-09",
@@ -749,7 +749,7 @@
             "handle": "gerbera",
             "image": "Gerbera.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Salt Water Taffy": 9
             },
             "first_seen": "2024-11-09",
@@ -761,7 +761,7 @@
             "image": "Glassblowers_Flame_a7d3db8a-c775-495b-a3d2-ecb69a16afc2.jpg",
             "components": {
                 "Electron": 4,
-                "Gunpowder": 1
+                "Flint": 1
             },
             "first_seen": "2025-02-21",
             "unlisted_on": "2026-07-21"
@@ -771,9 +771,9 @@
             "handle": "gumball",
             "image": "Gumball.jpg",
             "components": {
-                "(Unreleased Atomink Element)": 15,
+                "(Unreleased Element)": 15,
                 "Dilution Solution": 28,
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Stoker's Ash": 2,
                 "Tiger Lily": 1
             },
@@ -797,7 +797,7 @@
             "image": "Heron_c1294517-0a8a-4383-a756-630d8acc94be.jpg",
             "components": {
                 "Airline": 1,
-                "Gunpowder": 5,
+                "Flint": 5,
                 "Hibiscus": 10
             },
             "first_seen": "2024-11-09",
@@ -808,7 +808,7 @@
             "handle": "hot-rolled-steel",
             "image": "Hot_Rolled_Steel_ba013a81-4bd1-4d7d-acbb-b9749c6fc506.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Hibiscus": 1
             },
             "first_seen": "2024-11-09",
@@ -890,7 +890,7 @@
             "handle": "iron-ore",
             "image": "Iron_Ore_25394a42-be87-4add-b4c7-f75734ed2a56.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Ladybug": 1
             },
             "first_seen": "2024-11-09",
@@ -929,7 +929,7 @@
             "handle": "kalamata-olive-tree",
             "image": "Kalamata_Olive_Tree.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Hibiscus": 20,
                 "Ladybug": 5,
                 "Sterling Silver": 5,
@@ -944,7 +944,7 @@
             "image": "Kenai_Fjords.jpg",
             "components": {
                 "Airline": 2,
-                "Gunpowder": 1
+                "Flint": 1
             },
             "first_seen": "2024-11-09",
             "unlisted_on": "2026-07-21"
@@ -966,7 +966,7 @@
             "handle": "kyanite",
             "image": "Kyanite.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Hibiscus": 2,
                 "Teaberry Ice Cream": 5
             },
@@ -980,7 +980,7 @@
             "components": {
                 "Dilution Solution": 3,
                 "Electron": 4,
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Hibiscus": 4,
                 "Salt Water Taffy": 1,
                 "Sterling Silver": 4,
@@ -1006,7 +1006,7 @@
             "handle": "lighthouse",
             "image": "Lighthouse_Ink.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Sterling Silver": 4,
                 "Tiger Lily": 5,
                 "Yorkshire Canary": 10
@@ -1043,7 +1043,7 @@
             "image": "Locomotive.jpg",
             "components": {
                 "Electron": 1,
-                "Gunpowder": 8,
+                "Flint": 8,
                 "Salt Water Taffy": 1
             },
             "first_seen": "2024-11-09",
@@ -1068,7 +1068,7 @@
             "image": "Lunar_Dust_e0b635a4-ba84-4745-903d-1ff8ad07471f.jpg",
             "components": {
                 "Dilution Solution": 1,
-                "Gunpowder": 1
+                "Flint": 1
             },
             "first_seen": "2024-11-09",
             "unlisted_on": "2026-07-21"
@@ -1156,7 +1156,7 @@
             "components": {
                 "Airline": 4,
                 "Electron": 1,
-                "Gunpowder": 2,
+                "Flint": 2,
                 "Ladybug": 15
             },
             "first_seen": "2024-11-09",
@@ -1181,7 +1181,7 @@
             "handle": "ohio-river",
             "image": "Ohio_River.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Hibiscus": 8
             },
             "first_seen": "2024-11-09",
@@ -1193,7 +1193,7 @@
             "image": "Oil_Beetle.jpg",
             "components": {
                 "Electron": 2,
-                "Gunpowder": 3
+                "Flint": 3
             },
             "first_seen": "2024-11-09",
             "unlisted_on": "2026-07-21"
@@ -1203,7 +1203,7 @@
             "handle": "oil-rag",
             "image": "Oil_Rag_afa58eb9-8de2-4b0f-ad53-5a835e5b45b5.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Hibiscus": 1,
                 "Sterling Silver": 10,
                 "Tiger Lily": 1
@@ -1216,7 +1216,7 @@
             "handle": "pennsylvania-slate",
             "image": "Pennsylvania_Slate_fbdb8959-df6d-4517-a940-676b233cb664.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Hibiscus": 4
             },
             "first_seen": "2024-11-09",
@@ -1250,7 +1250,7 @@
             "image": "Phytoplankton_6600.jpg",
             "components": {
                 "Dilution Solution": 6,
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Hibiscus": 1,
                 "Sterling Silver": 2,
                 "Tiger Lily": 2
@@ -1276,7 +1276,7 @@
             "image": "Polar_Shadow.jpg",
             "components": {
                 "Airline": 5,
-                "Gunpowder": 20,
+                "Flint": 20,
                 "Hibiscus": 10,
                 "Sterling Silver": 2
             },
@@ -1325,7 +1325,7 @@
             "handle": "prickly-pear",
             "image": "Prickly_Pear_9fefb422-3d5d-4c54-9248-ed0d8281e5ab.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Ladybug": 2
             },
             "first_seen": "2024-11-09",
@@ -1387,7 +1387,7 @@
             "handle": "rhubarb",
             "image": "Rhubarb_d2981231-94bf-409f-874d-1ba30aff768a.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Ladybug": 15
             },
             "first_seen": "2024-11-09",
@@ -1410,7 +1410,7 @@
             "handle": "root-cellar",
             "image": "Root_Cellar_a0ca43e4-1e01-41ec-b953-19e8cc9e8f20.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Tiger Lily": 10,
                 "Yorkshire Canary": 10
             },
@@ -1446,7 +1446,7 @@
             "image": "Rusted_Rivet.jpg",
             "components": {
                 "Dilution Solution": 90,
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Ladybug": 10,
                 "Tiger Lily": 20
             },
@@ -1508,7 +1508,7 @@
             "image": "Sea_Holly.jpg",
             "components": {
                 "Airline": 5,
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Teaberry Ice Cream": 1
             },
             "first_seen": "2024-11-09",
@@ -1546,7 +1546,7 @@
             "image": "Silhouette.jpg",
             "components": {
                 "Electron": 1,
-                "Gunpowder": 8,
+                "Flint": 8,
                 "Ladybug": 1,
                 "Tiger Lily": 1
             },
@@ -1583,7 +1583,7 @@
             "handle": "streetcar",
             "image": "Streetcar_3f23d76b-60bc-471c-bbcc-fec1a40450e8.jpg",
             "components": {
-                "Gunpowder": 3,
+                "Flint": 3,
                 "Ladybug": 50,
                 "Tiger Lily": 50
             },
@@ -1644,7 +1644,7 @@
             "handle": "tailings-pond",
             "image": "Tailings_Pond.jpg",
             "components": {
-                "Gunpowder": 15,
+                "Flint": 15,
                 "Interstellar Bronze": 1
             },
             "first_seen": "2024-11-09",
@@ -1680,7 +1680,7 @@
             "handle": "tintype",
             "image": "Tintype.jpg",
             "components": {
-                "Gunpowder": 6,
+                "Flint": 6,
                 "Ladybug": 1
             },
             "first_seen": "2025-02-22",
@@ -1692,7 +1692,7 @@
             "image": "Train_Trestle.jpg",
             "components": {
                 "Electron": 2,
-                "Gunpowder": 2,
+                "Flint": 2,
                 "Ladybug": 4,
                 "Salt Water Taffy": 1,
                 "Sterling Silver": 10,
@@ -1729,7 +1729,7 @@
             "handle": "twilight",
             "image": "Twilight.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Salt Water Taffy": 4
             },
             "first_seen": "2024-11-09",
@@ -1763,7 +1763,7 @@
             "handle": "voltaic-arc",
             "image": "Voltaic_Arc_hiRes.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Tesla Coil": 1
             },
             "first_seen": "2024-11-09",
@@ -1788,7 +1788,7 @@
             "handle": "waterfront-dusk",
             "image": "Waterfront_Dusk_48abc2cd-bdce-4ba6-9b22-dbee6d9dca29.jpg",
             "components": {
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Salt Water Taffy": 1
             },
             "first_seen": "2024-11-09",
@@ -1821,9 +1821,9 @@
             "handle": "weathered-penny",
             "image": "Weathered_Penny.jpg",
             "components": {
-                "(Unreleased Aomtink Element)": 20,
+                "(Unreleased Element)": 20,
                 "Dilution Solution": 20,
-                "Gunpowder": 14,
+                "Flint": 14,
                 "Tiger Lily": 5
             },
             "first_seen": "2025-05-31",
@@ -1872,7 +1872,7 @@
             "handle": "yellow-backed-spiny-lizard",
             "image": "Desert_Hedgehog.jpg",
             "components": {
-                "Gunpowder": 5,
+                "Flint": 5,
                 "Hibiscus": 1,
                 "Ladybug": 2,
                 "Sterling Silver": 2,
@@ -1887,12 +1887,114 @@
             "image": "Zucchini_Fountain_Pen_Ink.jpg",
             "components": {
                 "Electron": 1,
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Ladybug": 1,
                 "Tiger Lily": 1
             },
             "first_seen": "2024-11-09",
             "unlisted_on": "2026-07-21"
+        }
+    },
+    "ingredients": {
+        "(Unreleased Element)": {
+            "image": null,
+            "handle": "(unreleased-element)"
+        },
+        "Airline": {
+            "image": "Airline_617f3254-a9c9-4b32-a993-c03cb318c145.jpg",
+            "handle": "airline"
+        },
+        "Amaryllis": {
+            "image": "Amaryllis.webp",
+            "handle": "amaryllis"
+        },
+        "Blossomed Lotus": {
+            "image": "Blossomed_Lotus_3a787dcb-44c1-43ae-9604-798c2fb744db.jpg",
+            "handle": "blossomed-lotus"
+        },
+        "Chimney Soot": {
+            "image": "Chimney_Soot_a10853b5-d69e-4014-9763-62acc0a1adfb.jpg",
+            "handle": "chimney-soot"
+        },
+        "Dilution Solution": {
+            "image": "Dilution_Solution_4d9ebdeb-caa0-4d73-b1b9-d95e9040e242.jpg",
+            "handle": "dilution-solution"
+        },
+        "Electron": {
+            "image": "Electron_65806c38-a010-427f-b44f-c14181f99f51.jpg",
+            "handle": "electron"
+        },
+        "Emerald Fusion": {
+            "image": "Emerald_Fusion_01702b0c-9b2d-49c4-8f9a-f2cf10aec52a.jpg",
+            "handle": "emerald-fusion"
+        },
+        "Fire Hydrant": {
+            "image": "Fire_Hydrant_7f25781c-9bab-4686-8def-04039a498715.jpg",
+            "handle": "fire-hydrant"
+        },
+        "Flint": {
+            "image": "Flint_cc4b6b96-6881-4654-ba69-8e06a269505f.jpg",
+            "handle": "flint"
+        },
+        "Hibiscus": {
+            "image": "Hibiscus_2091e9ea-0fcc-4dbb-a4c7-fa7483571cf2.jpg",
+            "handle": "hibiscus"
+        },
+        "Ice Age": {
+            "image": "IceAge.webp",
+            "handle": "ice-age"
+        },
+        "Interstellar Bronze": {
+            "image": "Interstellar_Bronze_5f4a3b3b-1520-49e1-befc-ddeea135dc83.jpg",
+            "handle": "interstellar-bronze"
+        },
+        "Ladybug": {
+            "image": "Ladybug_dea24eee-71c6-4f5b-b41a-1ee3c63e3f14.jpg",
+            "handle": "ladybug"
+        },
+        "Naples": {
+            "image": "Naples.jpg",
+            "handle": "naples"
+        },
+        "Phoenix": {
+            "image": "Phoenix_d09e5e13-2b76-4809-9c97-b6cf1886f3a3.jpg",
+            "handle": "phoenix"
+        },
+        "Salt Water Taffy": {
+            "image": "Salt_Water_Taffy_Ink.jpg",
+            "handle": "salt-water-taffy"
+        },
+        "Snapdragon": {
+            "image": "Snapdragon_Dropper.jpg",
+            "handle": "snapdragon"
+        },
+        "Sterling Silver": {
+            "image": "Sterling_Silver_701315ed-efa5-4049-956e-854455f9e4fb.jpg",
+            "handle": "sterling-silver"
+        },
+        "Stoker's Ash": {
+            "image": "Stokers_Ash.jpg",
+            "handle": "stokers-ash"
+        },
+        "Teaberry Ice Cream": {
+            "image": "Teaberry_Ice_Cream_ce1f97c0-0e9a-41ae-bdad-00d202a1a513.jpg",
+            "handle": "teaberry-ice-cream"
+        },
+        "Tesla Coil": {
+            "image": "Tesla_Coil_d50f27cb-75ea-457b-8e89-73c21477bb3a.jpg",
+            "handle": "tesla-coil"
+        },
+        "Tiger Lily": {
+            "image": "Tiger_Lily_ecc85a32-192b-41b0-9d39-709974cdcb1f.jpg",
+            "handle": "tiger-lily"
+        },
+        "Waterwheel": {
+            "image": "Waterwheel_efaca75d-1d06-480c-8f1f-930381d51ad0.jpg",
+            "handle": "waterwheel"
+        },
+        "Yorkshire Canary": {
+            "image": "Yorkshire_Canary.jpg",
+            "handle": "yorkshire-canary"
         }
     }
 }

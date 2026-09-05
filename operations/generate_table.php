@@ -17,7 +17,10 @@ try {
   // ingredients (Airline, Chimney Soot, ...) are live products with images.
   $liveProducts = loadProducts(ENRICHED_PRODUCTS_FILE);
   [, , $liveImages] = processProducts($liveProducts);
-  $productImages = array_merge(repositoryImages($recipes, IMAGE_DIR), $liveImages);
+  // Precedence: live product image, then the repository's remembered image
+  // (recovered from legacy snapshots for inks the storefront dropped).
+  $productImages = array_merge(repositoryImages($recipes, IMAGE_DIR), repositoryIngredientImages($repository, IMAGE_DIR), $liveImages);
+  $ingredientHandles = repositoryIngredientHandles($repository);
 
   $ingredientTotals = ingredientTotals($recipes);
   $allIngredients = array_keys($ingredientTotals);
@@ -27,7 +30,7 @@ try {
   echo "Currently listed: " . countListed($recipes) . "\n";
   echo "Unique ingredients: " . count($allIngredients) . "\n";
 
-  $html = generateHTML($recipes, $allIngredients, $ingredientTotals, $productImages, formatHumanDate(SCAN_DATE, 'F j, Y'));
+  $html = generateHTML($recipes, $allIngredients, $ingredientTotals, $productImages, formatHumanDate(SCAN_DATE, 'F j, Y'), $ingredientHandles);
 
   file_put_contents(INDEX_FILE, prettifyHTML($html));
   updatePathsInIndex(INDEX_FILE);

@@ -24,7 +24,7 @@ final class ArchiveParserTest extends TestCase
             'surrounding whitespace' => ["\n  Tesla Coil\n ", 'Tesla Coil', []],
             'typo corrected' => ['Diluent', 'Dilution Solution', []],
             'entity decoded' => ['Stoker&#039;s Ash', "Stoker's Ash", []],
-            'comma artifact singular' => ['Gunpowder, 1 part Tesla Coil', 'Gunpowder', ['Tesla Coil' => 1]],
+            'comma artifact singular' => ['Gunpowder, 1 part Tesla Coil', 'Flint', ['Tesla Coil' => 1]],
             'comma artifact plural' => ['Tesla Coil, 2 parts Teaberry Ice Cream', 'Tesla Coil', ['Teaberry Ice Cream' => 2]],
             'comma artifact with typo in extra' => ['Tesla Coil, 1 part Diluent', 'Tesla Coil', ['Dilution Solution' => 1]],
             'placeholder kept verbatim' => ['(Unreleased Element)', '(Unreleased Element)', []],
@@ -64,6 +64,23 @@ final class ArchiveParserTest extends TestCase
         $this->assertSame([
             'abacus' => ['title' => 'Abacus', 'image' => 'Abacus.jpg', 'components' => ['Airline' => 3]],
         ], $scan['recipes']);
+        $this->assertSame([
+            'Airline' => ['image' => 'Airline.jpg', 'handle' => 'airline'],
+            'Chimney Soot' => ['image' => null, 'handle' => 'chimney-soot'],
+        ], $scan['ingredients']);
+    }
+
+    public function testRenamedIngredientHeaderIsCanonicalizedInComponentsAndIngredients(): void
+    {
+        $html = $this->snapshot(
+            $this->th('Gunpowder', 'Gunpowder_Fountain_Pen_Ink.jpg'),
+            '<tr><td><a href="https://www.birminghampens.com/products/a">A</a></td><td>2</td></tr>'
+        );
+
+        $scan = parseArchiveSnapshot($html, '2025-10-30');
+
+        $this->assertSame(['Flint' => 2], $scan['recipes']['a']['components']);
+        $this->assertSame(['Flint' => ['image' => 'Gunpowder_Fountain_Pen_Ink.jpg', 'handle' => 'gunpowder']], $scan['ingredients']);
     }
 
     public function testParses2026ShapeWithProductCellAndQtyCells(): void
@@ -115,8 +132,9 @@ final class ArchiveParserTest extends TestCase
 
         $scan = parseArchiveSnapshot($html, '2026-05-10');
 
-        $this->assertSame(['Gunpowder' => 4, 'Tesla Coil' => 1], $scan['recipes']['a']['components']);
-        $this->assertSame(['Gunpowder' => 4, 'Tesla Coil' => 3], $scan['recipes']['b']['components'], 'larger value wins on collision');
+        $this->assertSame(['Flint' => 4, 'Tesla Coil' => 1], $scan['recipes']['a']['components']);
+        $this->assertSame(['Flint' => 4, 'Tesla Coil' => 3], $scan['recipes']['b']['components'], 'larger value wins on collision');
+        $this->assertSame(['Tesla Coil' => ['image' => null, 'handle' => 'tesla-coil']], $scan['ingredients'], 'artifact headers carry a garbage link, so they contribute no ingredient metadata');
     }
 
     public function testFoldsDiluentColumnIntoDilutionSolution(): void
@@ -204,7 +222,12 @@ final class ArchiveParserTest extends TestCase
         $this->assertSame('Abacus.jpg', $abacus['image']);
 
         $this->assertSame('2025-02-01', $repository['recipes']['kyanite']['unlisted_on']);
-        $this->assertSame(['Gunpowder' => 4, 'Tesla Coil' => 1], $repository['recipes']['gumball']['components']);
+        $this->assertSame(['Flint' => 4, 'Tesla Coil' => 1], $repository['recipes']['gumball']['components']);
+
+        $this->assertSame(['Airline', 'Dilution Solution', 'Flint', 'Tesla Coil'], array_keys($repository['ingredients']));
+        $this->assertSame(['image' => 'Airline.jpg', 'handle' => 'airline'], $repository['ingredients']['Airline'], 'image from the first snapshot survives later snapshots without one');
+        $this->assertSame(['image' => null, 'handle' => null], $repository['ingredients']['Flint'], 'only ever seen under an artifact header in the fixtures');
+        $this->assertSame(['image' => null, 'handle' => null], $repository['ingredients']['Tesla Coil'], 'extras from comma artifacts have no header of their own');
 
         $this->assertSame(
             [

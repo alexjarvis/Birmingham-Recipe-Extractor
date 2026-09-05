@@ -117,7 +117,7 @@
   }
 
   function toggleFilter(pill) {
-    const ingredient = pill.textContent.trim();
+    const ingredient = pill.dataset.name || pill.textContent.trim();
 
     if (state.activeFilters.has(ingredient)) {
       state.activeFilters.delete(ingredient);
@@ -145,7 +145,11 @@
         const parts = badge.textContent.trim().split(/\s+/);
         return {
           quantity: parseInt(parts[0]) || 0,
-          name: parts.slice(1).join(' ')
+          // data-name is the canonical ingredient; data-former holds names the
+          // shop used to sell it under (e.g. Gunpowder for Flint) so old names
+          // still match in search.
+          name: badge.dataset.name || parts.slice(1).join(' '),
+          former: (badge.dataset.former || '').toLowerCase()
         };
       });
 
@@ -173,6 +177,7 @@
         const titleMatch = recipe.title.toLowerCase().includes(state.searchQuery);
         const ingredientMatch = recipe.ingredients.some(ing =>
           ing.name.toLowerCase().includes(state.searchQuery)
+          || (ing.former && ing.former.includes(state.searchQuery))
         );
         if (!titleMatch && !ingredientMatch) return false;
       }

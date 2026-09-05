@@ -13,8 +13,12 @@ the repository and are shown with a "Not listed since" badge.
 ## Architecture
 
 - **Repository on `main`** — `data/recipes.json` (one entry per product handle:
-  title, image, formula, `first_seen`, `unlisted_on`) and `data/changelog.json`
-  (append-only `added` / `changed` events). Both are sorted for stable diffs.
+  title, image, formula, `first_seen`, `unlisted_on`, plus an `ingredients`
+  section mapping each ingredient to its image and storefront handle) and
+  `data/changelog.json` (append-only `added` / `changed` events). Both are
+  sorted for stable diffs. Ingredient names are canonical: typo folds and
+  renames (Gunpowder → Flint) live in `utility/functions.php` and apply to
+  live scans, the archive rebuild, and the page alike.
 - **Source on `main`** — PHP scripts under `operations/`, shared helpers in
   `utility/`, entry point `run.php`. The pipeline is: fetch products →
   extract recipes → merge into the repository → render `index.html` →

@@ -18,9 +18,9 @@ function splitIngredientHeader(string $header): array {
   $extras = [];
   if (preg_match('/^(.+?),\s*(\d+)\s*parts?\s+(.+)$/i', $header, $m)) {
     $header = trim($m[1]);
-    $extras[correctTypos(trim($m[3]))] = (int) $m[2];
+    $extras[canonicalIngredientName(trim($m[3]))] = (int) $m[2];
   }
-  return [correctTypos($header), $extras];
+  return [canonicalIngredientName($header), $extras];
 }
 
 /**
@@ -33,7 +33,7 @@ function splitIngredientHeader(string $header): array {
  * integer quantities or empty. Wrapper divs and classes vary by year and are
  * ignored on purpose.
  *
- * @return array{date: string, recipes: array<string, array{title: string, image: ?string, components: array<string, int>}>, failed: array<int, string>}
+ * @return array{date: string, recipes: array<string, array{title: string, image: ?string, components: array<string, int>}>, failed: array<int, string>, ingredients: array<string, array{image: ?string, handle: ?string}>}
  * @throws \RuntimeException on structural surprises
  */
 function parseArchiveSnapshot(string $html, string $date): array {
@@ -50,11 +50,28 @@ function parseArchiveSnapshot(string $html, string $date): array {
 
   /** @var array<int, array{0: string, 1: array<string, int>}> $columns */
   $columns = [];
+  $ingredients = [];
   foreach ($headerCells as $index => $th) {
     if ($index === 0 || !$th instanceof DOMNode) {
       continue;
     }
-    $columns[] = splitIngredientHeader($th->textContent);
+    $column = splitIngredientHeader($th->textContent);
+    $columns[] = $column;
+    if ($column[1] !== []) {
+      // Comma-artifact headers link to a slug of the whole phrase; nothing to keep.
+      continue;
+    }
+
+    // Header cells carry the ingredient's product link and image; keep them
+    // so the rebuild can recover images for inks the storefront dropped.
+    $headerAnchors = $xpath->query('.//a[contains(@href, "/products/")]', $th);
+    $headerAnchor = $headerAnchors === FALSE ? NULL : $headerAnchors->item(0);
+    $headerImages = $xpath->query('.//img', $th);
+    $headerImage = $headerImages === FALSE ? NULL : $headerImages->item(0);
+    $ingredients[$column[0]] = [
+      'image' => $headerImage instanceof DOMElement ? basename($headerImage->getAttribute('src')) : NULL,
+      'handle' => $headerAnchor instanceof DOMElement ? archiveHandleFromHref($headerAnchor->getAttribute('href')) : NULL,
+    ];
   }
   $expectedCells = count($columns) + 1;
 
@@ -77,10 +94,7 @@ function parseArchiveSnapshot(string $html, string $date): array {
     if (!$anchor instanceof DOMElement) {
       throw new RuntimeException("Snapshot $date: product cell without product link");
     }
-    $href = $anchor->getAttribute('href');
-    $marker = '/products/';
-    $pos = strrpos($href, $marker);
-    $handle = rawurldecode(substr($href, ($pos === FALSE ? 0 : $pos) + strlen($marker)));
+    $handle = archiveHandleFromHref($anchor->getAttribute('href'));
     $title = trim($anchor->textContent);
 
     $images = $xpath->query('.//img', $productCell);
@@ -109,7 +123,16 @@ function parseArchiveSnapshot(string $html, string $date): array {
     $recipes[$handle] = ['title' => $title, 'image' => $image, 'components' => $components];
   }
 
-  return ['date' => $date, 'recipes' => $recipes, 'failed' => []];
+  return ['date' => $date, 'recipes' => $recipes, 'failed' => [], 'ingredients' => $ingredients];
+}
+
+/**
+ * Product handle from a storefront product URL as written in a snapshot.
+ */
+function archiveHandleFromHref(string $href): string {
+  $marker = '/products/';
+  $pos = strrpos($href, $marker);
+  return rawurldecode(substr($href, ($pos === FALSE ? 0 : $pos) + strlen($marker)));
 }
 
 /**

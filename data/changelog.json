@@ -1,5 +1,5 @@
 {
-    "schema_version": 1,
+    "schema_version": 2,
     "events": [
         {
             "date": "2024-11-09",
@@ -858,7 +858,7 @@
             },
             "to": {
                 "Electron": 4,
-                "Gunpowder": 1
+                "Flint": 1
             }
         },
         {
@@ -878,7 +878,7 @@
             },
             "to": {
                 "Dilution Solution": 6,
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Hibiscus": 1,
                 "Sterling Silver": 2,
                 "Tiger Lily": 2
@@ -911,13 +911,13 @@
             "title": "Lunar Dust",
             "from": {
                 "Dilution Solution": 9,
-                "Gunpowder": 4,
+                "Flint": 4,
                 "Sterling Silver": 80,
                 "Tiger Lily": 3
             },
             "to": {
                 "Dilution Solution": 1,
-                "Gunpowder": 1
+                "Flint": 1
             }
         },
         {
@@ -975,13 +975,13 @@
             "title": "Cold Steel",
             "from": {
                 "Electron": 1,
-                "Gunpowder": 1,
+                "Flint": 1,
                 "Salt Water Taffy": 1
             },
             "to": {
                 "Blossomed Lotus": 1,
                 "Electron": 1,
-                "Gunpowder": 1
+                "Flint": 1
             }
         },
         {

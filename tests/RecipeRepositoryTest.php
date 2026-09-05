@@ -21,8 +21,8 @@ final class RecipeRepositoryTest extends TestCase
 
     public function testEmptyShapesCarrySchemaVersion(): void
     {
-        $this->assertSame(['schema_version' => 1, 'recipes' => []], emptyRepository());
-        $this->assertSame(['schema_version' => 1, 'events' => []], emptyChangelog());
+        $this->assertSame(['schema_version' => 2, 'recipes' => [], 'ingredients' => []], emptyRepository());
+        $this->assertSame(['schema_version' => 2, 'events' => []], emptyChangelog());
     }
 
     public function testMergeAddsNewRecipeWithFirstSeenAndEvent(): void
@@ -150,6 +150,7 @@ final class RecipeRepositoryTest extends TestCase
             'title' => 'B', 'handle' => 'b', 'image' => null, 'components' => ['X' => 1],
             'first_seen' => '2025-01-01', 'unlisted_on' => '2026-07-21',
         ];
+        $repo['ingredients'] = ['X' => ['image' => null, 'handle' => null]];
 
         $result = mergeScan($repo, emptyChangelog(), $this->scan([], '2026-08-05'));
 
@@ -285,6 +286,64 @@ final class RecipeRepositoryTest extends TestCase
             'abacus' => ['title' => 'Abacus', 'image' => 'Abacus.jpg', 'components' => ['Airline' => 3]],
             'no-image' => ['title' => 'No Image', 'image' => null, 'components' => ['Airline' => 1]],
         ], $scan['recipes']);
+        $this->assertSame([
+            'Abacus' => ['image' => 'Abacus.jpg', 'handle' => 'abacus'],
+            'Broken' => ['image' => null, 'handle' => 'broken'],
+            'No Image' => ['image' => null, 'handle' => 'no-image'],
+            'Plain Ink' => ['image' => null, 'handle' => 'no-recipe'],
+        ], $scan['ingredients'], 'every live product is a candidate ingredient, keyed by canonical title');
+    }
+
+    public function testScanFromEnrichedProductsCanonicalizesIngredientTitles(): void
+    {
+        $scan = scanFromEnrichedProducts([
+            ['handle' => 'flint', 'title' => 'Flint', 'images' => [['src' => 'https://cdn/Flint.jpg']], 'recipe_components' => []],
+            ['handle' => 'gunpowder', 'title' => 'Gunpowder', 'images' => [], 'recipe_components' => []],
+        ], '2026-09-05');
+
+        $this->assertSame(['Flint' => ['image' => 'Flint.jpg', 'handle' => 'flint']], $scan['ingredients'], 'a product carrying the real image wins over a renamed shell');
+    }
+
+    public function testMergeBuildsIngredientsFromRecipesUsingScanMetadata(): void
+    {
+        $scan = $this->scan(['a' => $this->recipe('A', ['Airline' => 1, 'Flint' => 2])]);
+        $scan['ingredients'] = [
+            'Airline' => ['image' => 'Airline.jpg', 'handle' => 'airline'],
+            'Unrelated Pen' => ['image' => 'pen.jpg', 'handle' => 'pen'],
+        ];
+
+        $result = mergeScan(emptyRepository(), emptyChangelog(), $scan);
+
+        $this->assertSame([
+            'Airline' => ['image' => 'Airline.jpg', 'handle' => 'airline'],
+            'Flint' => ['image' => null, 'handle' => null],
+        ], $result['repository']['ingredients'], 'only ingredients used by a recipe are kept');
+    }
+
+    public function testMergeKeepsIngredientMetadataWhenScanLacksItAndUpdatesWhenPresent(): void
+    {
+        $repo = emptyRepository();
+        $repo['recipes']['a'] = ['title' => 'A', 'handle' => 'a', 'image' => null, 'components' => ['Flint' => 2, 'Gone' => 1], 'first_seen' => '2025-01-01', 'unlisted_on' => null];
+        $repo['ingredients'] = [
+            'Flint' => ['image' => 'Gunpowder_Fountain_Pen_Ink.jpg', 'handle' => 'gunpowder'],
+            'Gone' => ['image' => 'gone.jpg', 'handle' => 'gone'],
+        ];
+
+        $scan = $this->scan(['a' => $this->recipe('A', ['Flint' => 2])], '2026-09-05');
+        $scan['ingredients'] = ['Flint' => ['image' => null, 'handle' => 'flint']];
+        $result = mergeScan($repo, emptyChangelog(), $scan);
+
+        $this->assertTrue($result['changed']);
+        $this->assertSame(['Flint' => ['image' => 'Gunpowder_Fountain_Pen_Ink.jpg', 'handle' => 'flint']], $result['repository']['ingredients'], 'handle updated, image retained, unused ingredient dropped');
+    }
+
+    public function testMergeReportsNoChangeWhenIngredientsUnchanged(): void
+    {
+        $first = mergeScan(emptyRepository(), emptyChangelog(), $this->scan(['a' => $this->recipe('A', ['X' => 1])]));
+        $second = mergeScan($first['repository'], $first['changelog'], $this->scan(['a' => $this->recipe('A', ['X' => 1])], '2026-01-02'));
+
+        $this->assertFalse($second['changed']);
+        $this->assertSame(['X' => ['image' => null, 'handle' => null]], $second['repository']['ingredients']);
     }
 
     public function testScanFromEnrichedProductsSkipsProductsWithoutHandle(): void

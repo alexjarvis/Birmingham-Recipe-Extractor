@@ -3,13 +3,13 @@
 // Recipe repository: shapes, persistence, and the merge that folds one scan
 // into the repository. Pure data code; nothing here renders HTML.
 
-const REPOSITORY_SCHEMA_VERSION = 1;
+const REPOSITORY_SCHEMA_VERSION = 2;
 
 /**
- * @return array{schema_version:int, recipes: array<string, array<string, mixed>>}
+ * @return array{schema_version:int, recipes: array<string, array<string, mixed>>, ingredients: array<string, array{image: ?string, handle: ?string}>}
  */
 function emptyRepository(): array {
-  return ['schema_version' => REPOSITORY_SCHEMA_VERSION, 'recipes' => []];
+  return ['schema_version' => REPOSITORY_SCHEMA_VERSION, 'recipes' => [], 'ingredients' => []];
 }
 
 /**
@@ -71,7 +71,12 @@ function sortComponents(array $components): array {
  * Scan shape:
  *   ['date' => 'YYYY-MM-DD',
  *    'recipes' => [handle => ['title' => string, 'image' => ?string, 'components' => array<string,int>]],
- *    'failed' => string[]]   // handles whose page could not be fetched: neither updated nor unlisted
+ *    'failed' => string[],   // handles whose page could not be fetched: neither updated nor unlisted
+ *    'ingredients' => [name => ['image' => ?string, 'handle' => ?string]]]  // optional metadata for any product
+ *
+ * The repository's `ingredients` section is rebuilt on every merge from the
+ * names used by recipes: metadata comes from the scan when present, otherwise
+ * whatever was stored before is kept. Ingredients no recipe uses are dropped.
  *
  * Rules: a scanned recipe is added (with first_seen and an `added` event) or
  * updated (title/image replaced, `changed` event if the formula differs,
@@ -162,8 +167,32 @@ function mergeScan(array $repository, array $changelog, array $scan): array {
 
   ksort($recipes, SORT_STRING);
 
+  /** @var array<string, array<string, mixed>> $storedIngredients */
+  $storedIngredients = $repository['ingredients'] ?? [];
+  /** @var array<string, array<string, mixed>> $scannedIngredients */
+  $scannedIngredients = $scan['ingredients'] ?? [];
+  $ingredients = [];
+  foreach ($recipes as $recipe) {
+    foreach (array_keys($recipe['components'] ?? []) as $name) {
+      $name = (string) $name;
+      if (isset($ingredients[$name])) {
+        continue;
+      }
+      $stored = $storedIngredients[$name] ?? [];
+      $found = $scannedIngredients[$name] ?? [];
+      $ingredients[$name] = [
+        'image' => $found['image'] ?? $stored['image'] ?? NULL,
+        'handle' => $found['handle'] ?? $stored['handle'] ?? NULL,
+      ];
+    }
+  }
+  ksort($ingredients, SORT_STRING);
+  if ($ingredients !== $storedIngredients) {
+    $changed = TRUE;
+  }
+
   return [
-    'repository' => ['schema_version' => REPOSITORY_SCHEMA_VERSION, 'recipes' => $recipes],
+    'repository' => ['schema_version' => REPOSITORY_SCHEMA_VERSION, 'recipes' => $recipes, 'ingredients' => $ingredients],
     'changelog' => ['schema_version' => REPOSITORY_SCHEMA_VERSION, 'events' => $events],
     'changed' => $changed,
     'summary' => $summary,
@@ -174,16 +203,29 @@ function mergeScan(array $repository, array $changelog, array $scan): array {
  * Build a scan result from the extractor's enriched product list.
  *
  * @param array<int, array<string, mixed>> $products
- * @return array{date: string, recipes: array<string, array{title: string, image: ?string, components: array<string, int>}>, failed: array<int, string>}
+ * @return array{date: string, recipes: array<string, array{title: string, image: ?string, components: array<string, int>}>, failed: array<int, string>, ingredients: array<string, array{image: ?string, handle: ?string}>}
  */
 function scanFromEnrichedProducts(array $products, string $date): array {
   $recipes = [];
   $failed = [];
+  $ingredients = [];
   foreach ($products as $product) {
     $handle = (string) ($product['handle'] ?? '');
     if ($handle === '') {
       continue;
     }
+    $title = (string) ($product['title'] ?? $handle);
+    $src = $product['images'][0]['src'] ?? NULL;
+    $image = is_string($src) && $src !== '' ? cleanImageName($src) : NULL;
+
+    // Every live product is a candidate ingredient (base inks are products
+    // too). Key by canonical name so a renamed product lands on the right
+    // ingredient; when two products fold together, prefer the one with an image.
+    $name = canonicalIngredientName($title);
+    if (!isset($ingredients[$name]) || ($ingredients[$name]['image'] === NULL && $image !== NULL)) {
+      $ingredients[$name] = ['image' => $image, 'handle' => $handle];
+    }
+
     if (!empty($product['recipe_fetch_failed'])) {
       $failed[] = $handle;
       continue;
@@ -192,14 +234,13 @@ function scanFromEnrichedProducts(array $products, string $date): array {
     if (!is_array($components) || $components === []) {
       continue;
     }
-    $src = $product['images'][0]['src'] ?? NULL;
-    $image = is_string($src) && $src !== '' ? cleanImageName($src) : NULL;
     /** @var array<string, int> $components */
     $recipes[$handle] = [
-      'title' => (string) ($product['title'] ?? $handle),
+      'title' => $title,
       'image' => $image,
       'components' => $components,
     ];
   }
-  return ['date' => $date, 'recipes' => $recipes, 'failed' => $failed];
+  ksort($ingredients, SORT_STRING);
+  return ['date' => $date, 'recipes' => $recipes, 'failed' => $failed, 'ingredients' => $ingredients];
 }
