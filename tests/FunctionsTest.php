@@ -544,11 +544,10 @@ final class FunctionsTest extends TestCase
         $this->assertStringContainsString('id="searchInput"', $html);
         $this->assertStringContainsString('id="cardView"', $html);
         $this->assertStringContainsString('id="tableView"', $html);
-        // Stat values: 2 recipes, 2 ingredients
         $this->assertMatchesRegularExpression('/stat-value">2<.*?stat-label">Recipes/s', $html);
         $this->assertMatchesRegularExpression('/stat-value">2<.*?stat-label">Ingredients/s', $html);
-        // The "Captured" stat is computed against a hardcoded $totalTagged = 146.
-        $this->assertStringContainsString('Captured', $html);
+        $this->assertMatchesRegularExpression('/stat-value">2<.*?stat-label">On site now/s', $html);
+        $this->assertStringNotContainsString('Captured', $html);
     }
 
     public function testGenerateHTMLShowsRemainingIngredientsPillWhenManyIngredients(): void
@@ -559,40 +558,6 @@ final class FunctionsTest extends TestCase
         $html = generateHTML([], $allIngredients, $ingredientTotals, []);
 
         $this->assertStringContainsString('+ 8 more', $html);
-    }
-
-    public function testGenerateHTMLComputesCaptureRateFromTotalTagged(): void
-    {
-        $enrichedProducts = array_map(
-            fn($i) => ['handle' => "h$i", 'title' => "T$i", 'recipe_components' => ['X' => 1]],
-            range(1, 60)
-        );
-        $allIngredients = ['X'];
-        $ingredientTotals = ['X' => 60];
-
-        $html = generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, [], 150);
-
-        // 60/150 = 40%
-        $this->assertMatchesRegularExpression('/stat-value">40%?<.*?stat-label">Captured/s', $html);
-    }
-
-    public function testGenerateHTMLDefaultsTo100PercentWhenTotalTaggedOmitted(): void
-    {
-        $enrichedProducts = [
-            ['handle' => 'a', 'title' => 'A', 'recipe_components' => ['X' => 1]],
-            ['handle' => 'b', 'title' => 'B', 'recipe_components' => ['X' => 1]],
-        ];
-
-        $html = generateHTML($enrichedProducts, ['X'], ['X' => 2], []);
-
-        $this->assertMatchesRegularExpression('/stat-value">100%?<.*?stat-label">Captured/s', $html);
-    }
-
-    public function testGenerateHTMLAvoidsDivisionByZero(): void
-    {
-        $html = generateHTML([], [], [], [], 0);
-
-        $this->assertMatchesRegularExpression('/stat-value">0%?<.*?stat-label">Captured/s', $html);
     }
 
     public function testGenerateDocumentHeadIncludesTitleAndStylesheet(): void
@@ -607,12 +572,120 @@ final class FunctionsTest extends TestCase
 
     public function testGeneratePageHeaderEmbedsStats(): void
     {
-        $header = generatePageHeader('March 14, 2026', 12, 5, 80.0);
+        $header = generatePageHeader('March 14, 2026', 156, 25, 2);
 
-        $this->assertStringContainsString('Updated March 14, 2026', $header);
-        $this->assertStringContainsString('<div class="stat-value">12</div>', $header);
-        $this->assertStringContainsString('<div class="stat-value">5</div>', $header);
-        $this->assertStringContainsString('<div class="stat-value">80%</div>', $header);
+        $this->assertStringContainsString('Last checked March 14, 2026', $header);
+        $this->assertStringContainsString('<div class="stat-value">156</div><div class="stat-label">Recipes</div>', $header);
+        $this->assertStringContainsString('<div class="stat-value">25</div><div class="stat-label">Ingredients</div>', $header);
+        $this->assertStringContainsString('<div class="stat-value">2</div><div class="stat-label">On site now</div>', $header);
+    }
+
+    public function testGenerateHTMLCountsOnlyListedRecipesForOnSiteStat(): void
+    {
+        $recipes = [
+            ['handle' => 'a', 'title' => 'A', 'recipe_components' => ['X' => 1], 'unlisted_on' => null],
+            ['handle' => 'b', 'title' => 'B', 'recipe_components' => ['X' => 1], 'unlisted_on' => '2026-07-21'],
+            ['handle' => 'c', 'title' => 'C', 'recipe_components' => ['X' => 1], 'unlisted_on' => '2026-07-21'],
+        ];
+
+        $html = generateHTML($recipes, ['X'], ['X' => 3], [], 'September 5, 2026');
+
+        $this->assertMatchesRegularExpression('/stat-value">3<.*?stat-label">Recipes/s', $html);
+        $this->assertMatchesRegularExpression('/stat-value">1<.*?stat-label">On site now/s', $html);
+        $this->assertStringContainsString('Last checked September 5, 2026', $html);
+    }
+
+    public function testFormatHumanDate(): void
+    {
+        $this->assertSame('Jul 21, 2026', formatHumanDate('2026-07-21'));
+        $this->assertSame('July 21, 2026', formatHumanDate('2026-07-21', 'F j, Y'));
+        $this->assertSame('not-a-date', formatHumanDate('not-a-date'));
+    }
+
+    public function testFormatUnlistedBadge(): void
+    {
+        $this->assertSame('', formatUnlistedBadge(null));
+        $this->assertSame(
+            '<span class="unlisted-badge" title="Last seen on birminghampens.com before 2026-07-21">Not listed since Jul 21, 2026</span>',
+            formatUnlistedBadge('2026-07-21')
+        );
+    }
+
+    public function testGenerateRecipeCardMarksUnlistedRecipe(): void
+    {
+        $product = ['handle' => 'b', 'title' => 'B', 'recipe_components' => ['X' => 1], 'unlisted_on' => '2026-07-21'];
+
+        $html = generateRecipeCard($product, []);
+
+        $this->assertStringContainsString('<div class="recipe-card unlisted">', $html);
+        $this->assertStringContainsString('Not listed since Jul 21, 2026', $html);
+    }
+
+    public function testGenerateRecipeCardOmitsBadgeForListedRecipe(): void
+    {
+        $product = ['handle' => 'a', 'title' => 'A', 'recipe_components' => ['X' => 1], 'unlisted_on' => null];
+
+        $html = generateRecipeCard($product, []);
+
+        $this->assertStringContainsString('<div class="recipe-card">', $html);
+        $this->assertStringNotContainsString('unlisted-badge', $html);
+    }
+
+    public function testGenerateTableRowMarksUnlistedRecipe(): void
+    {
+        $product = ['handle' => 'b', 'title' => 'B', 'recipe_components' => ['X' => 1], 'unlisted_on' => '2026-07-21'];
+
+        $html = generateTableRow($product, ['X'], []);
+
+        $this->assertStringStartsWith('<tr class="unlisted">', $html);
+        $this->assertStringContainsString('unlisted-badge', $html);
+    }
+
+    public function testGenerateTableRowIsPlainForListedRecipe(): void
+    {
+        $product = ['handle' => 'a', 'title' => 'A', 'recipe_components' => ['X' => 1]];
+
+        $html = generateTableRow($product, ['X'], []);
+
+        $this->assertStringStartsWith('<tr><td>', $html);
+        $this->assertStringNotContainsString('unlisted-badge', $html);
+    }
+
+    public function testRepositoryRecipesForPageAdaptsAndSortsByTitle(): void
+    {
+        $repository = ['schema_version' => 1, 'recipes' => [
+            'zeta' => ['title' => 'Zeta', 'handle' => 'zeta', 'image' => 'Zeta.jpg', 'components' => ['X' => 1], 'first_seen' => '2025-01-01', 'unlisted_on' => null],
+            'alpha' => ['title' => 'Alpha', 'handle' => 'alpha', 'image' => null, 'components' => ['X' => 2, 'Y' => 3], 'first_seen' => '2025-01-01', 'unlisted_on' => '2026-07-21'],
+        ]];
+
+        $recipes = repositoryRecipesForPage($repository);
+
+        $this->assertSame(['Alpha', 'Zeta'], array_column($recipes, 'title'));
+        $this->assertSame([
+            'handle' => 'alpha', 'title' => 'Alpha', 'recipe_components' => ['X' => 2, 'Y' => 3],
+            'unlisted_on' => '2026-07-21', 'image' => null,
+        ], $recipes[0]);
+    }
+
+    public function testIngredientTotalsAndCountListed(): void
+    {
+        $recipes = [
+            ['handle' => 'a', 'title' => 'A', 'recipe_components' => ['X' => 2, 'Y' => 3], 'unlisted_on' => null, 'image' => null],
+            ['handle' => 'b', 'title' => 'B', 'recipe_components' => ['X' => 1], 'unlisted_on' => '2026-07-21', 'image' => null],
+        ];
+
+        $this->assertSame(['X' => 3, 'Y' => 3], ingredientTotals($recipes));
+        $this->assertSame(1, countListed($recipes));
+    }
+
+    public function testRepositoryImagesMapsTitlesToImageDir(): void
+    {
+        $recipes = [
+            ['handle' => 'a', 'title' => 'A', 'recipe_components' => [], 'unlisted_on' => null, 'image' => 'A.jpg'],
+            ['handle' => 'b', 'title' => 'B', 'recipe_components' => [], 'unlisted_on' => null, 'image' => null],
+        ];
+
+        $this->assertSame(['A' => '/img/A.jpg'], repositoryImages($recipes, '/img'));
     }
 
     public function testGenerateSearchControlsContainsSearchInputAndViewToggle(): void
@@ -750,72 +823,6 @@ final class FunctionsTest extends TestCase
         } finally {
             $this->rmrf($dir);
         }
-    }
-
-    public function testExtractTableContentReturnsTableHtml(): void
-    {
-        $dir = $this->makeTempDir();
-        try {
-            $file = $dir . '/with-table.html';
-            file_put_contents($file, '<html><body><p>before</p><table id="t"><tr><td>cell</td></tr></table><p>after</p></body></html>');
-
-            $result = extractTableContent($file);
-
-            $this->assertStringContainsString('<table', $result);
-            $this->assertStringContainsString('cell', $result);
-            $this->assertStringNotContainsString('before', $result, 'returns only the table, not surrounding markup');
-            $this->assertStringNotContainsString('after', $result);
-        } finally {
-            $this->rmrf($dir);
-        }
-    }
-
-    public function testExtractTableContentReturnsEmptyWhenNoTable(): void
-    {
-        $dir = $this->makeTempDir();
-        try {
-            $file = $dir . '/no-table.html';
-            file_put_contents($file, '<html><body><p>nothing here</p></body></html>');
-
-            $this->assertSame('', extractTableContent($file));
-        } finally {
-            $this->rmrf($dir);
-        }
-    }
-
-    public function testExtractTableContentReturnsFirstTableWhenMultiple(): void
-    {
-        $dir = $this->makeTempDir();
-        try {
-            $file = $dir . '/two-tables.html';
-            file_put_contents($file, '<html><body><table><tr><td>first</td></tr></table><table><tr><td>second</td></tr></table></body></html>');
-
-            $result = extractTableContent($file);
-
-            $this->assertStringContainsString('first', $result);
-            $this->assertStringNotContainsString('second', $result);
-        } finally {
-            $this->rmrf($dir);
-        }
-    }
-
-    public function testExtractTableContentFromStringReturnsTableHtml(): void
-    {
-        $result = extractTableContentFromString('<html><body><p>before</p><table><tr><td>cell</td></tr></table></body></html>');
-
-        $this->assertStringContainsString('<table', $result);
-        $this->assertStringContainsString('cell', $result);
-        $this->assertStringNotContainsString('before', $result);
-    }
-
-    public function testExtractTableContentFromStringReturnsEmptyForEmptyInput(): void
-    {
-        $this->assertSame('', extractTableContentFromString(''));
-    }
-
-    public function testExtractTableContentFromStringReturnsEmptyWhenNoTable(): void
-    {
-        $this->assertSame('', extractTableContentFromString('<html><body><p>no table</p></body></html>'));
     }
 
     public function testLoadProductsReturnsDecodedArray(): void

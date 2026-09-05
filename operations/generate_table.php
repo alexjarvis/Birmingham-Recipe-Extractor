@@ -2,71 +2,36 @@
 
 require_once(__DIR__ . '/../config/config.php');
 require_once(__DIR__ . '/../utility/functions.php');
+require_once(__DIR__ . '/../utility/recipe_repository.php');
 
-// Main execution
 try {
-  // Ensure necessary directories and files exist
   checkInputFile(ENRICHED_PRODUCTS_FILE);
-  checkOutputDir(ARCHIVE_DIR);
   checkOutputDir(OUTPUT_DIR);
   checkOutputDir(IMAGE_DIR);
 
-  // Load products and process
-  $products = loadProducts(ENRICHED_PRODUCTS_FILE);
+  // The page renders the whole repository, not just what the site lists today.
+  $repository = loadJsonDocument(RECIPES_FILE, emptyRepository());
+  $recipes = repositoryRecipesForPage($repository);
 
-  // Total products that should have a recipe (recipe-tagged or "Ink Recipe" in body_html).
-  // Used as the denominator for the capture-rate stat — the numerator is what we actually extracted.
-  $totalTagged = count(array_filter($products, fn($p) =>
-    in_array('recipe', $p['tags'] ?? [], TRUE)
-    || strpos($p['body_html'] ?? '', 'Ink Recipe') !== FALSE
-  ));
+  // Today's product list still drives image downloads: base inks used as
+  // ingredients (Airline, Chimney Soot, ...) are live products with images.
+  $liveProducts = loadProducts(ENRICHED_PRODUCTS_FILE);
+  [, , $liveImages] = processProducts($liveProducts);
+  $productImages = array_merge(repositoryImages($recipes, IMAGE_DIR), $liveImages);
 
-  [
-    $enrichedProducts,
-    $ingredientTotals,
-    $productImages,
-  ] = processProducts($products);
-
-  // Gather all unique ingredients sorted alphabetically
+  $ingredientTotals = ingredientTotals($recipes);
   $allIngredients = array_keys($ingredientTotals);
   sort($allIngredients);
 
-  echo "Products with recipes: " . count($enrichedProducts) . "\n";
+  echo "Recipes in repository: " . count($recipes) . "\n";
+  echo "Currently listed: " . countListed($recipes) . "\n";
   echo "Unique ingredients: " . count($allIngredients) . "\n";
 
-  // Generate the HTML content
-  $html = generateHTML($enrichedProducts, $allIngredients, $ingredientTotals, $productImages, $totalTagged);
+  $html = generateHTML($recipes, $allIngredients, $ingredientTotals, $productImages, formatHumanDate(SCAN_DATE, 'F j, Y'));
 
-  // Prettify the HTML output
-  $prettyHtml = prettifyHTML($html);
-
-  $archiveFile = ARCHIVE_FILE;
-  $indexFile = INDEX_FILE;
-
-  // Compare in-memory first — only persist when the table content has actually
-  // changed, avoiding the wasteful write+delete cycle on no-op days.
-  $newTable = extractTableContentFromString($prettyHtml);
-  $existingTable = file_exists($indexFile) ? extractTableContent($indexFile) : '';
-
-  $newTableNormalized = str_replace(['../images', '../template'], ['images', 'template'], $newTable);
-  $existingTableNormalized = str_replace(['../images', '../template'], ['images', 'template'], $existingTable);
-
-  if ($newTableNormalized !== $existingTableNormalized || empty($existingTableNormalized)) {
-    // Content has changed (or no index yet) — persist the new archive and update index.
-    file_put_contents($archiveFile, $prettyHtml);
-    copy($archiveFile, $indexFile);
-    updatePathsInIndex($indexFile);
-    echo "✓ Created archive file: $archiveFile\n";
-    echo "✓ index.html updated with new recipe data (content changed).\n";
-  }
-  else {
-    // Content is identical — don't write anything; clean up generated inputs that we'd otherwise leak.
-    echo "✗ No recipe changes detected (table content identical).\n";
-    @unlink(ENRICHED_PRODUCTS_FILE);
-    @unlink(PRODUCTS_FILE);
-    echo "✗ Deleted redundant inputs (products JSON, enriched JSON).\n";
-    echo "✓ index.html preserved unchanged.\n";
-  }
+  file_put_contents(INDEX_FILE, prettifyHTML($html));
+  updatePathsInIndex(INDEX_FILE);
+  echo "✓ Wrote " . INDEX_FILE . PHP_EOL;
 }
 catch (Exception $e) {
   echo 'Error: ' . $e->getMessage() . PHP_EOL;

@@ -97,39 +97,6 @@ function downloadImageIfNeeded(string $imageUrl, string $imagePath, ?callable $f
 }
 
 /**
- * Extracts the HTML content of the <table> element from a given HTML file.
- *
- * @param string $filePath The path to the HTML file.
- *
- * @return string The HTML content of the <table> element.
- */
-function extractTableContent(string $filePath): string {
-  return extractTableContentFromString(file_get_contents($filePath) ?: '');
-}
-
-/**
- * Extracts the HTML content of the first <table> element from an HTML string.
- *
- * @param string $html
- * @return string The HTML content of the <table> element, or empty string.
- */
-function extractTableContentFromString(string $html): string {
-  if ($html === '') {
-    return '';
-  }
-  $dom = new DOMDocument();
-  libxml_use_internal_errors(TRUE);
-  $dom->loadHTML($html);
-  libxml_clear_errors();
-  $table = $dom->getElementsByTagName('table')->item(0);
-  if ($table === null) {
-    return '';
-  }
-  $serialized = $dom->saveHTML($table);
-  return $serialized === false ? '' : $serialized;
-}
-
-/**
  * @param callable|null $fetcher fn(int $page): array  Optional override for tests.
  * @param callable|null $sleeper fn(int $seconds): void  Optional override for tests.
  * @param callable|null $logger fn(string $message): void  Optional log sink. Defaults to stdout.
@@ -288,21 +255,21 @@ function generateDocumentHead(string $generationDate): string {
 }
 
 /**
- * Generate the page header with gradient, stats bar, theme toggle, and archive link.
+ * Generate the page header with stats bar, theme toggle, and changes link.
  */
-function generatePageHeader(string $generationDate, int $recipeCount, int $ingredientCount, float $captureRate): string {
+function generatePageHeader(string $checkedDate, int $recipeCount, int $ingredientCount, int $listedCount): string {
   return '<header>'
     . '<div class="header-content">'
     . '<div class="header-top">'
-    . '<div><h1>Birmingham Ink Recipes</h1><div class="header-date">Updated ' . $generationDate . '</div></div>'
+    . '<div><h1>Birmingham Ink Recipes</h1><div class="header-date">Last checked ' . $checkedDate . '</div></div>'
     . '<div class="header-actions">'
     . '<div class="theme-toggle" id="themeToggle"></div>'
-    . '<a href="index.html" class="btn btn-icon" title="Archive">🗂️</a>'
+    . '<a href="index.html" class="btn btn-icon" title="Changes">🗂️</a>'
     . '</div></div>'
     . '<div class="stats-bar">'
     . '<div class="stat"><div><div class="stat-value">' . $recipeCount . '</div><div class="stat-label">Recipes</div></div></div>'
     . '<div class="stat"><div><div class="stat-value">' . $ingredientCount . '</div><div class="stat-label">Ingredients</div></div></div>'
-    . '<div class="stat"><div><div class="stat-value">' . $captureRate . '%</div><div class="stat-label">Captured</div></div></div>'
+    . '<div class="stat"><div><div class="stat-value">' . $listedCount . '</div><div class="stat-label">On site now</div></div></div>'
     . '</div></div></header>';
 }
 
@@ -377,21 +344,20 @@ function generateTableView(array $enrichedProducts, array $allIngredients, array
 /**
  * Generate HTML for the complete recipe page.
  *
- * @param array<int, array<string, mixed>> $enrichedProducts
+ * @param array<int, array<string, mixed>> $enrichedProducts  Page recipes (see repositoryRecipesForPage()).
  * @param array<int, string> $allIngredients
  * @param array<string, int> $ingredientTotals
  * @param array<string, string> $productImages
- * @param int|null $totalTagged Number of products that *should* have a recipe (denominator for the capture-rate stat). Defaults to count($enrichedProducts), i.e. assumes 100% capture when not specified.
+ * @param string|null $checkedDate  Human date of the scan; defaults to today.
  */
-function generateHTML(array $enrichedProducts, array $allIngredients, array $ingredientTotals, array $productImages, ?int $totalTagged = null): string {
-  $generationDate = date('F j, Y');
+function generateHTML(array $enrichedProducts, array $allIngredients, array $ingredientTotals, array $productImages, ?string $checkedDate = NULL): string {
+  $checkedDate ??= date('F j, Y');
   $recipeCount = count($enrichedProducts);
   $ingredientCount = count($allIngredients);
-  $totalTagged ??= $recipeCount;
-  $captureRate = $totalTagged > 0 ? round(($recipeCount / $totalTagged) * 100, 1) : 0;
+  $listedCount = countListed($enrichedProducts);
 
-  return generateDocumentHead($generationDate)
-    . generatePageHeader($generationDate, $recipeCount, $ingredientCount, $captureRate)
+  return generateDocumentHead($checkedDate)
+    . generatePageHeader($checkedDate, $recipeCount, $ingredientCount, $listedCount)
     . '<main>'
     . generateSearchControls()
     . generateFilterPills($allIngredients)
@@ -412,7 +378,8 @@ function generateRecipeCard(array $product, array $productImages): string {
   $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
   $localImagePath = isset($productImages[$product['title']]) ? '../images/' . basename($productImages[$product['title']]) : '';
 
-  $html = '<div class="recipe-card">';
+  $unlistedOn = $product['unlisted_on'] ?? NULL;
+  $html = '<div class="recipe-card' . ($unlistedOn !== NULL ? ' unlisted' : '') . '">';
 
   // Card image
   $imageFullPath = isset($productImages[$product['title']]) ? __DIR__ . '/../output/images/' . basename($productImages[$product['title']]) : '';
@@ -425,6 +392,7 @@ function generateRecipeCard(array $product, array $productImages): string {
   // Card content
   $html .= '<div class="card-content">';
   $html .= '<h3 class="card-title"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></h3>';
+  $html .= formatUnlistedBadge($unlistedOn);
 
   // Ingredient badges
   if (!empty($product['recipe_components'])) {
@@ -455,7 +423,8 @@ function generateTableRow(array $product, array $allIngredients, array $productI
   $productUrl = "https://www.birminghampens.com/products/" . urlencode($product['handle']);
   $localImagePath = isset($productImages[$product['title']]) ? '../images/' . basename($productImages[$product['title']]) : '';
 
-  $html = '<tr><td><div class="product-cell">';
+  $unlistedOn = $product['unlisted_on'] ?? NULL;
+  $html = ($unlistedOn !== NULL ? '<tr class="unlisted">' : '<tr>') . '<td><div class="product-cell">';
 
   // Product image
   $imageFullPath = isset($productImages[$product['title']]) ? __DIR__ . '/../output/images/' . basename($productImages[$product['title']]) : '';
@@ -465,6 +434,7 @@ function generateTableRow(array $product, array $allIngredients, array $productI
 
   // Product name
   $html .= '<div class="product-name"><a href="' . htmlspecialchars($productUrl) . '" target="_blank">' . htmlspecialchars($product['title']) . '</a></div>';
+  $html .= formatUnlistedBadge($unlistedOn);
   $html .= '</div></td>';
 
   // Ingredient quantities
@@ -492,6 +462,90 @@ function getQuantityClass(int $quantity): string {
   } else {
     return 'qty-high';
   }
+}
+
+/**
+ * Render a YYYY-MM-DD string with a date() format, falling back to the input
+ * when it does not parse.
+ */
+function formatHumanDate(string $ymd, string $format = 'M j, Y'): string {
+  $ts = strtotime($ymd);
+  return $ts === FALSE ? $ymd : date($format, $ts);
+}
+
+/**
+ * Badge shown on recipes the storefront no longer lists. Empty string when listed.
+ */
+function formatUnlistedBadge(?string $unlistedOn): string {
+  if ($unlistedOn === NULL) {
+    return '';
+  }
+  $human = formatHumanDate($unlistedOn);
+  return '<span class="unlisted-badge" title="Last seen on birminghampens.com before ' . htmlspecialchars($unlistedOn) . '">'
+    . 'Not listed since ' . htmlspecialchars($human) . '</span>';
+}
+
+/**
+ * Adapt the repository to the product shape the page generators consume.
+ *
+ * @param array<string, mixed> $repository
+ * @return array<int, array{handle: string, title: string, recipe_components: array<string, int>, unlisted_on: ?string, image: ?string}>
+ */
+function repositoryRecipesForPage(array $repository): array {
+  $recipes = [];
+  /** @var array<string, array<string, mixed>> $entries */
+  $entries = $repository['recipes'] ?? [];
+  foreach ($entries as $handle => $recipe) {
+    /** @var array<string, int> $components */
+    $components = $recipe['components'] ?? [];
+    $recipes[] = [
+      'handle' => (string) ($recipe['handle'] ?? $handle),
+      'title' => (string) ($recipe['title'] ?? $handle),
+      'recipe_components' => $components,
+      'unlisted_on' => isset($recipe['unlisted_on']) ? (string) $recipe['unlisted_on'] : NULL,
+      'image' => isset($recipe['image']) ? (string) $recipe['image'] : NULL,
+    ];
+  }
+  usort($recipes, fn(array $a, array $b) => strcmp($a['title'], $b['title']));
+  return $recipes;
+}
+
+/**
+ * @param array<int, array<string, mixed>> $recipes
+ * @return array<string, int>
+ */
+function ingredientTotals(array $recipes): array {
+  $totals = [];
+  foreach ($recipes as $recipe) {
+    foreach ($recipe['recipe_components'] ?? [] as $ingredient => $quantity) {
+      $totals[$ingredient] = ($totals[$ingredient] ?? 0) + (int) $quantity;
+    }
+  }
+  return $totals;
+}
+
+/**
+ * @param array<int, array<string, mixed>> $recipes
+ */
+function countListed(array $recipes): int {
+  return count(array_filter($recipes, fn(array $r) => ($r['unlisted_on'] ?? NULL) === NULL));
+}
+
+/**
+ * Title => absolute image path for repository recipes that carry an image name.
+ *
+ * @param array<int, array<string, mixed>> $recipes
+ * @return array<string, string>
+ */
+function repositoryImages(array $recipes, string $imageDir): array {
+  $images = [];
+  foreach ($recipes as $recipe) {
+    $image = $recipe['image'] ?? NULL;
+    if (is_string($image) && $image !== '') {
+      $images[(string) $recipe['title']] = rtrim($imageDir, '/') . '/' . $image;
+    }
+  }
+  return $images;
 }
 
 /**

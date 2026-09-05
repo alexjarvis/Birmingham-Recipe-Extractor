@@ -13,8 +13,6 @@ define("TEMPLATE_DIR", OUTPUT_DIR . '/template');
 define("IMAGE_DIR", OUTPUT_DIR . '/images');
 define("INDEX_FILE", OUTPUT_DIR . '/index.html');
 define("CHANGES_FILE", ARCHIVE_DIR . '/index.html');
-// Legacy dated snapshot path; removed once generate_table.php stops writing snapshots.
-define("ARCHIVE_FILE", ARCHIVE_DIR . '/' . SCAN_DATE . '-recipes.html');
 
 // Scratch inputs for a single run. Not published, not committed.
 define("PRODUCTS_DIR", $appRoot . '/var/products');
