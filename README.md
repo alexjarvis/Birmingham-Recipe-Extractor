@@ -1,15 +1,35 @@
 # Birmingham Recipe Extractor
 
-A simple, unofficial utility to extract recipes from [Birmingham Pen Company](https://www.birminghampens.com) ink formulas.
+A simple, unofficial utility that keeps a repository of every ink recipe
+[Birmingham Pen Company](https://www.birminghampens.com) has published, and
+renders it as a searchable page.
 
-The pipeline fetches every product from the Shopify storefront, pulls the recipe metafield off each recipe-tagged product page, and renders an HTML table + per-day archive.
+Birmingham removed nearly all recipe content from their storefront in mid-2026.
+The committed repository in `data/` holds every recipe observed since
+November 2024. The daily scan looks for new or changed recipes on the
+storefront and merges them in; recipes the storefront no longer lists stay in
+the repository and are shown with a "Not listed since" badge.
 
 ## Architecture
 
-- **Source on `main`** — PHP scripts under `operations/`, shared helpers in `utility/functions.php`, entry point `run.php`.
-- **Daily run on GitHub Actions** — `.github/workflows/deploy.yml` runs `phpstan` → `phpunit` → `php run.php` daily at 00:00 UTC and pushes the generated HTML to the `gh-pages` branch.
-- **Mirrors via GitLab CI** — `.gitlab-ci.yml` mirrors `main` between GitLab and GitHub, mirrors `gh-pages` from GitHub back to GitLab, and serves GitLab Pages from the mirrored `gh-pages` branch.
-- **Output** — current snapshot at `index.html`, dated archive HTML files in `archive/`, generated only when the recipe set actually changes.
+- **Repository on `main`** — `data/recipes.json` (one entry per product handle:
+  title, image, formula, `first_seen`, `unlisted_on`) and `data/changelog.json`
+  (append-only `added` / `changed` events). Both are sorted for stable diffs.
+- **Source on `main`** — PHP scripts under `operations/`, shared helpers in
+  `utility/`, entry point `run.php`. The pipeline is: fetch products →
+  extract recipes → merge into the repository → render `index.html` →
+  render the Changes page.
+- **Daily run on GitHub Actions** — `.github/workflows/deploy.yml` runs
+  `phpstan` → `phpunit` → `php run.php` daily at 00:00 UTC. If `data/`
+  changed, it commits and pushes to GitLab `main` (the authoritative copy,
+  via the `GITLAB_URL` secret), then publishes `output/` to `gh-pages`.
+- **Mirrors via GitLab CI** — `.gitlab-ci.yml` mirrors `main` from GitLab to
+  GitHub on every commit, mirrors `gh-pages` from GitHub back to GitLab, and
+  serves GitLab Pages from the mirrored `gh-pages` branch.
+- **Output** — `index.html` shows the whole repository. `archive/index.html`
+  is the change log plus links to the frozen legacy snapshots
+  (`archive/*-recipes.html`, Nov 2024 – Aug 2026). No new snapshots are
+  written.
 
 ## Run locally
 
@@ -24,7 +44,7 @@ Generated artifacts land in `output/` (gitignored).
 
 ```sh
 docker build -t birmingham-recipe-extractor .
-docker run --rm -v "$PWD/output:/app/output" birmingham-recipe-extractor
+docker run --rm -v "$PWD/output:/app/output" -v "$PWD/data:/app/data" birmingham-recipe-extractor
 ```
 
 ## Develop
@@ -40,5 +60,19 @@ PHP 8.3+ required. CI pins PHP 8.3.
 
 ## Operational notes
 
-- The recipe extraction step refuses to publish a snapshot if it captures less than 80% of recipe-tagged products — better to keep yesterday's data than overwrite with a broken half-snapshot. Threshold lives in `operations/recipe_extractor.php` (`RECIPE_CAPTURE_MIN_RATIO`).
-- `index.html` is only rewritten when the recipe set actually differs from the previous run, keeping the dated archive directory free of duplicate snapshots.
+- A product-list page that fails after all retries, or a product list with
+  zero products, aborts the run before the merge. A partial list would read as
+  "these recipes are gone".
+- A recipe page that fails to fetch is reported as `recipe_fetch_failed` and
+  the merge leaves that recipe untouched. Only recipes genuinely absent from a
+  successful scan get `unlisted_on` set.
+- Listing flips are not change-log events; only `added` and formula `changed`
+  are. Listing state lives in `unlisted_on`.
+- `index.html` and `archive/index.html` are regenerated every run, so
+  `gh-pages` receives a small commit daily carrying the "Last checked" date.
+- Rebuilding the repository from the legacy snapshots (normally never needed):
+  `php utility/rebuild_from_archive.php <dir-of-*-recipes.html> data`.
+- Secret required on GitHub: `GITLAB_URL` =
+  `https://<user>:<deploy-token>@<gitlab-host>/<group>/<project>.git` with
+  `write_repository` scope. Without it, a run that changes `data/` fails
+  rather than publish a page that disagrees with the committed repository.

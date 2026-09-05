@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the snapshot-of-the-storefront model with a committed repository of every recipe ever observed, rebuilt from the 121 archive snapshots and kept current by the daily scan.
+**Goal:** Replace the snapshot-of-the-storefront model with a committed repository of every recipe ever observed, rebuilt from the 120 archive snapshots and kept current by the daily scan.
 
 **Architecture:** A pure `mergeScan()` function folds one dated scan result into `data/recipes.json` and `data/changelog.json`. The daily pipeline produces a scan result from the live storefront; a one-time rebuild script produces scan results by parsing archive HTML pages, then replays them through the same merge. Page generation reads the repository instead of the day's products. GitHub Actions commits repository changes to GitLab `main`, which mirrors to GitHub.
 
@@ -2262,7 +2262,7 @@ mkdir -p var/legacy-archive
 for f in $(git ls-tree -r --name-only origin/gh-pages | grep '^archive/.*-recipes\.html$'); do
   git show "origin/gh-pages:$f" > "var/legacy-archive/$(basename "$f")"
 done
-ls var/legacy-archive | wc -l   # expect 121
+ls var/legacy-archive | wc -l   # expect 120
 ```
 
 - [ ] **Step 2: Run the rebuild**
@@ -2295,7 +2295,7 @@ Expected: `recipes=156 listed=aluminum-oxide,cherry-blossom`, `bad ingredient na
 
 ```bash
 git add data/recipes.json data/changelog.json
-git commit -m "Seed recipe repository from 121 archive snapshots (2024-11-09 to 2026-08-13)"
+git commit -m "Seed recipe repository from 120 archive snapshots (2024-11-09 to 2026-08-13)"
 ```
 
 ---

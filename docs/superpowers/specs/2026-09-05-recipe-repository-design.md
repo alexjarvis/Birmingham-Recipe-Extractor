@@ -12,7 +12,7 @@ storefront lists 396 products, none tagged `recipe`, and only two with an
 "Ink Recipe" block in the description. The published page therefore shows two
 recipes, and the dated archive has become the only place the other 154 exist.
 
-The archive HTML pages on `gh-pages` (121 snapshots, 2024-11-09 through
+The archive HTML pages on `gh-pages` (120 snapshots, 2024-11-09 through
 2026-08-13) are the only historical record. The daily JSON was never kept.
 
 ## Goal
@@ -57,7 +57,7 @@ whole repository, marking which recipes are currently listed on the site.
 ```
 
 - Keyed by Shopify product handle. Handles are stable identifiers; titles are
-  display text. Across all 121 snapshots no handle ever changed title, but the
+  display text. Across all 120 snapshots no handle ever changed title, but the
   key choice protects against it.
 - `recipes` is sorted by handle and `components` by ingredient name so the
   file diffs cleanly.
@@ -156,7 +156,7 @@ CLI script that stays in the repository. It:
 
 ### Parsing a snapshot
 
-All 121 snapshots share this structure, verified by a prototype parser:
+All 120 snapshots share this structure, verified by a prototype parser:
 
 - `thead` first `th` is the product column. Each remaining `th` contains an
   `<a>` whose first text node is the ingredient name.

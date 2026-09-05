@@ -1,5 +1,6 @@
 /var/
 /output/index.html
 /output/archive/*.html
+/output/images/*
 /vendor/
 /.phpunit.cache/
