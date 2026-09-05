@@ -267,4 +267,31 @@ final class RecipeRepositoryTest extends TestCase
             @unlink($path);
         }
     }
+
+    public function testScanFromEnrichedProductsBuildsScanShape(): void
+    {
+        $products = [
+            ['handle' => 'abacus', 'title' => 'Abacus', 'images' => [['src' => 'https://cdn/x/Abacus.jpg?v=1']], 'recipe_components' => ['Airline' => 3]],
+            ['handle' => 'no-recipe', 'title' => 'Plain Ink', 'images' => [], 'recipe_components' => []],
+            ['handle' => 'broken', 'title' => 'Broken', 'images' => [], 'recipe_components' => [], 'recipe_fetch_failed' => true],
+            ['handle' => 'no-image', 'title' => 'No Image', 'images' => [], 'recipe_components' => ['Airline' => 1]],
+        ];
+
+        $scan = scanFromEnrichedProducts($products, '2026-09-05');
+
+        $this->assertSame('2026-09-05', $scan['date']);
+        $this->assertSame(['broken'], $scan['failed']);
+        $this->assertSame([
+            'abacus' => ['title' => 'Abacus', 'image' => 'Abacus.jpg', 'components' => ['Airline' => 3]],
+            'no-image' => ['title' => 'No Image', 'image' => null, 'components' => ['Airline' => 1]],
+        ], $scan['recipes']);
+    }
+
+    public function testScanFromEnrichedProductsSkipsProductsWithoutHandle(): void
+    {
+        $scan = scanFromEnrichedProducts([['title' => 'X', 'recipe_components' => ['A' => 1]]], '2026-09-05');
+
+        $this->assertSame([], $scan['recipes']);
+        $this->assertSame([], $scan['failed']);
+    }
 }

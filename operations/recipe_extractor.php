@@ -3,55 +3,37 @@
 require_once(__DIR__ . '/../config/config.php');
 require_once(__DIR__ . '/../utility/functions.php');
 
-const RECIPE_CAPTURE_MIN_RATIO = 0.80;
 const RECIPE_FETCH_INTER_REQUEST_DELAY_MICROSECONDS = 250000; // 250ms politeness delay
 
 try {
   checkInputFile(PRODUCTS_FILE);
-
-  // Load JSON file containing products
-  $jsonData = file_get_contents(PRODUCTS_FILE);
-  if ($jsonData === FALSE) {
-    throw new Exception('Failed to read ' . PRODUCTS_FILE);
-  }
-  $products = json_decode($jsonData, TRUE);
-
-  // Check if data is valid
-  if (!is_array($products)) {
-    die("Invalid products.json data." . PHP_EOL);
-  }
+  $products = loadProducts(PRODUCTS_FILE);
 
   echo "Processing " . count($products) . " products...\n";
   $enrichedProducts = [];
   $recipesFound = 0;
   $taggedRecipeCount = 0;
-  $fetchSuccessCount = 0;
   $fetchFailures = [];
 
   foreach ($products as $product) {
-    // Extract basic information
     $price = $product['variants'][0]['price'];
     $compareAtPrice = $product['variants'][0]['compare_at_price'];
     $available = $product['variants'][0]['available'];
 
-    // Determine if product is on sale or sold out
-    $isOnSale = $compareAtPrice > $price;
-    $isSoldOut = !$available;
-
-    // Enriched product data
     $enrichedProduct = [
       'id' => $product['id'],
       'title' => $product['title'],
       'handle' => $product['handle'],
       'price' => $price,
-      'on_sale' => $isOnSale,
-      'sold_out' => $isSoldOut,
+      'on_sale' => $compareAtPrice > $price,
+      'sold_out' => !$available,
       'tags' => $product['tags'],
       'images' => $product['images'],
       'vendor' => $product['vendor'],
       'product_type' => $product['product_type'],
       'variants' => $product['variants'],
       'body_html' => $product['body_html'],
+      'recipe_fetch_failed' => FALSE,
     ];
 
     $recipeHtml = '';
@@ -62,20 +44,18 @@ try {
     }
     elseif (in_array('recipe', $product['tags'])) {
       $taggedRecipeCount++;
-      $recipeUrl = PRODUCT_URL . $product['handle'];
-
-      $pageHtml = fetchProductPage($recipeUrl);
+      $pageHtml = fetchProductPage(PRODUCT_URL . $product['handle']);
 
       if ($pageHtml === NULL) {
+        // The merge treats a failed fetch as "unknown", not "gone".
+        $enrichedProduct['recipe_fetch_failed'] = TRUE;
         $fetchFailures[] = $product['title'];
         echo "  ✗ " . $product['title'] . " (fetch failed after " . RECIPE_FETCH_MAX_ATTEMPTS . " attempts)\n";
       }
       else {
-        $fetchSuccessCount++;
         $recipeHtml = extractRecipeHtmlFromPage($pageHtml);
       }
 
-      // Politeness delay between sequential requests to avoid tripping rate limits.
       usleep(RECIPE_FETCH_INTER_REQUEST_DELAY_MICROSECONDS);
     }
 
@@ -92,26 +72,12 @@ try {
   echo "\nSummary:\n";
   echo "  Total products processed: " . count($products) . "\n";
   echo "  Products with recipes: $recipesFound\n";
-  if ($taggedRecipeCount > 0) {
-    $rate = $fetchSuccessCount / $taggedRecipeCount;
-    echo "  Recipe-tagged products fetched: $fetchSuccessCount/$taggedRecipeCount (" . round($rate * 100, 1) . "%)\n";
-    if (!empty($fetchFailures)) {
-      echo "  Failed handles: " . implode(', ', $fetchFailures) . "\n";
-    }
-    if ($rate < RECIPE_CAPTURE_MIN_RATIO) {
-      throw new RuntimeException(sprintf(
-        'Capture rate %.1f%% below minimum %.0f%% (%d/%d recipe-tagged products fetched). Refusing to publish a degraded snapshot.',
-        $rate * 100,
-        RECIPE_CAPTURE_MIN_RATIO * 100,
-        $fetchSuccessCount,
-        $taggedRecipeCount
-      ));
-    }
+  echo "  Recipe-tagged products: $taggedRecipeCount\n";
+  if (!empty($fetchFailures)) {
+    echo "  Fetch failures (left unchanged in the repository): " . implode(', ', $fetchFailures) . "\n";
   }
 
-  // Only write the enriched data once we know the run is good — otherwise
-  // a partial file lingers and downstream steps publish a degraded snapshot.
-  file_put_contents(ENRICHED_PRODUCTS_FILE, json_encode($enrichedProducts, JSON_PRETTY_PRINT));
+  file_put_contents(ENRICHED_PRODUCTS_FILE, json_encode($enrichedProducts, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
   echo "  Enriched data written to " . ENRICHED_PRODUCTS_FILE . PHP_EOL;
 }
 catch (Exception $e) {

@@ -169,3 +169,37 @@ function mergeScan(array $repository, array $changelog, array $scan): array {
     'summary' => $summary,
   ];
 }
+
+/**
+ * Build a scan result from the extractor's enriched product list.
+ *
+ * @param array<int, array<string, mixed>> $products
+ * @return array{date: string, recipes: array<string, array{title: string, image: ?string, components: array<string, int>}>, failed: array<int, string>}
+ */
+function scanFromEnrichedProducts(array $products, string $date): array {
+  $recipes = [];
+  $failed = [];
+  foreach ($products as $product) {
+    $handle = (string) ($product['handle'] ?? '');
+    if ($handle === '') {
+      continue;
+    }
+    if (!empty($product['recipe_fetch_failed'])) {
+      $failed[] = $handle;
+      continue;
+    }
+    $components = $product['recipe_components'] ?? [];
+    if (!is_array($components) || $components === []) {
+      continue;
+    }
+    $src = $product['images'][0]['src'] ?? NULL;
+    $image = is_string($src) && $src !== '' ? cleanImageName($src) : NULL;
+    /** @var array<string, int> $components */
+    $recipes[$handle] = [
+      'title' => (string) ($product['title'] ?? $handle),
+      'image' => $image,
+      'components' => $components,
+    ];
+  }
+  return ['date' => $date, 'recipes' => $recipes, 'failed' => $failed];
+}
