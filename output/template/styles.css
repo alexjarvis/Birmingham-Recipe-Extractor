@@ -583,6 +583,81 @@ tr.unlisted .product-name a {
   margin-left: auto;
 }
 
+/* Changes page */
+main.changes {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+main.changes h2 {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin: 2rem 0 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.change-list,
+.legacy ul {
+  list-style: none;
+}
+
+.change-item {
+  padding: 0.5rem 0;
+}
+
+.change-item a,
+.legacy a {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.change-item a:hover,
+.legacy a:hover {
+  color: var(--accent-primary);
+}
+
+.change-type {
+  display: inline-block;
+  min-width: 5.5rem;
+  text-align: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-right: 0.5rem;
+}
+
+.change-added {
+  background: var(--qty-low);
+  color: var(--qty-low-text);
+}
+
+.change-changed {
+  background: var(--qty-medium);
+  color: var(--qty-medium-text);
+}
+
+.change-diff {
+  list-style: none;
+  margin: 0.35rem 0 0 6.5rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.legacy p {
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.legacy li {
+  padding: 0.25rem 0;
+}
+
 /* Utilities */
 .hidden {
   display: none !important;

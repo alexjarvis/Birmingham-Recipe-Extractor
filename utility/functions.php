@@ -687,8 +687,8 @@ function updatePathsInIndex(string $indexFile): void {
 
   // Replace the archive link href from 'index.html' to 'archive/'
   $updatedContent = str_replace(
-    '<a href="index.html" class="btn btn-icon" title="Archive">',
-    '<a href="archive/" class="btn btn-icon" title="Archive">',
+    '<a href="index.html" class="btn btn-icon" title="Changes">',
+    '<a href="archive/" class="btn btn-icon" title="Changes">',
     $updatedContent
   );
 
@@ -818,4 +818,102 @@ function parseRecipeComponents(string $recipeHtml): array {
     }
   }
   return $components;
+}
+
+/**
+ * Human lines describing how a formula changed. Only differing ingredients.
+ *
+ * @param array<string, int> $from
+ * @param array<string, int> $to
+ * @return array<int, string>
+ */
+function describeFormulaChange(array $from, array $to): array {
+  $names = array_unique(array_merge(array_keys($from), array_keys($to)));
+  sort($names, SORT_STRING);
+  $lines = [];
+  foreach ($names as $name) {
+    $before = $from[$name] ?? NULL;
+    $after = $to[$name] ?? NULL;
+    if ($before === $after) {
+      continue;
+    }
+    if ($before === NULL) {
+      $lines[] = "$name: added ($after)";
+    }
+    elseif ($after === NULL) {
+      $lines[] = "$name: removed";
+    }
+    else {
+      $lines[] = "$name: $before → $after";
+    }
+  }
+  return $lines;
+}
+
+/**
+ * Render the Changes page: change-log events newest first, then the frozen
+ * legacy snapshot pages.
+ *
+ * @param array<int, array<string, mixed>> $events  Chronological change-log events.
+ * @param array<int, string> $snapshotFiles  Basenames of legacy *-recipes.html files.
+ */
+function generateChangesPage(array $events, array $snapshotFiles, string $generationDate): string {
+  $html = '<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8">'
+    . '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+    . '<title>Birmingham Ink Recipes - Changes</title>'
+    . '<link rel="stylesheet" href="../template/styles.css">'
+    . '</head><body>'
+    . '<header><div class="header-content"><div class="header-top">'
+    . '<div><h1>Recipe Changes</h1><div class="header-date">Generated ' . htmlspecialchars($generationDate) . '</div></div>'
+    . '<div class="header-actions"><div class="theme-toggle" id="themeToggle"></div>'
+    . '<a href="../" class="btn btn-icon" title="Recipes">🏠</a></div>'
+    . '</div></div></header><main class="changes">';
+
+  if ($events === []) {
+    $html .= '<p class="changes-empty">No changes recorded yet.</p>';
+  }
+  else {
+    $byDate = [];
+    foreach ($events as $event) {
+      $byDate[(string) $event['date']][] = $event;
+    }
+    krsort($byDate, SORT_STRING);
+    foreach ($byDate as $date => $dayEvents) {
+      $html .= '<section class="change-day"><h2>' . htmlspecialchars(formatHumanDate((string) $date)) . '</h2><ul class="change-list">';
+      foreach ($dayEvents as $event) {
+        $type = (string) $event['event'];
+        $url = PRODUCT_URL . urlencode((string) $event['handle']);
+        $html .= '<li class="change-item"><span class="change-type change-' . htmlspecialchars($type) . '">' . htmlspecialchars(ucfirst($type)) . '</span> '
+          . '<a href="' . htmlspecialchars($url) . '" target="_blank">' . htmlspecialchars((string) $event['title']) . '</a>';
+        if ($type === 'changed') {
+          /** @var array<string, int> $from */
+          $from = $event['from'] ?? [];
+          /** @var array<string, int> $to */
+          $to = $event['to'] ?? [];
+          $html .= '<ul class="change-diff">';
+          foreach (describeFormulaChange($from, $to) as $line) {
+            $html .= '<li>' . htmlspecialchars($line) . '</li>';
+          }
+          $html .= '</ul>';
+        }
+        $html .= '</li>';
+      }
+      $html .= '</ul></section>';
+    }
+  }
+
+  if ($snapshotFiles !== []) {
+    rsort($snapshotFiles, SORT_STRING);
+    $html .= '<section class="legacy"><h2>Legacy snapshots</h2>'
+      . '<p>Daily captures of the storefront from before the repository model. Frozen; no new snapshots are written.</p><ul>';
+    foreach ($snapshotFiles as $file) {
+      if (!preg_match('/(\d{4}-\d{2}-\d{2})/', $file, $m)) {
+        continue;
+      }
+      $html .= '<li><a href="' . htmlspecialchars($file) . '">Recipes as of ' . htmlspecialchars(formatHumanDate($m[1])) . '</a></li>';
+    }
+    $html .= '</ul></section>';
+  }
+
+  return $html . '</main><script src="../template/script.js"></script></body></html>';
 }

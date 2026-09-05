@@ -905,12 +905,12 @@ final class FunctionsTest extends TestCase
         $dir = $this->makeTempDir();
         try {
             $file = $dir . '/index.html';
-            file_put_contents($file, '<a href="index.html" class="btn btn-icon" title="Archive">x</a>');
+            file_put_contents($file, '<a href="index.html" class="btn btn-icon" title="Changes">x</a>');
 
             updatePathsInIndex($file);
 
             $updated = file_get_contents($file);
-            $this->assertStringContainsString('<a href="archive/" class="btn btn-icon" title="Archive">', $updated);
+            $this->assertStringContainsString('<a href="archive/" class="btn btn-icon" title="Changes">', $updated);
             $this->assertStringNotContainsString('href="index.html"', $updated);
         } finally {
             $this->rmrf($dir);
@@ -1223,5 +1223,63 @@ final class FunctionsTest extends TestCase
         $this->assertSame(200, $result['status']);
         $this->assertIsString($result['body']);
         $this->assertStringContainsString('metafield-rich_text_field', $result['body']);
+    }
+
+    public function testDescribeFormulaChangeListsOnlyDifferences(): void
+    {
+        $lines = describeFormulaChange(
+            ['Airline' => 3, 'Dilution Solution' => 1, 'Gone' => 2],
+            ['Airline' => 3, 'Dilution Solution' => 2, 'Tesla Coil' => 1]
+        );
+
+        $this->assertSame([
+            'Dilution Solution: 1 → 2',
+            'Gone: removed',
+            'Tesla Coil: added (1)',
+        ], $lines);
+    }
+
+    public function testGenerateChangesPageGroupsEventsNewestFirst(): void
+    {
+        $events = [
+            ['date' => '2024-11-09', 'event' => 'added', 'handle' => 'abacus', 'title' => 'Abacus'],
+            ['date' => '2025-05-31', 'event' => 'changed', 'handle' => 'abacus', 'title' => 'Abacus',
+             'from' => ['Chimney Soot' => 3, 'Dilution Solution' => 1], 'to' => ['Chimney Soot' => 3, 'Dilution Solution' => 2]],
+            ['date' => '2025-05-31', 'event' => 'added', 'handle' => 'kyanite', 'title' => 'Kyanite & Co'],
+        ];
+
+        $html = generateChangesPage($events, ['2024-11-09-recipes.html', '2025-05-31-recipes.html'], 'September 5, 2026');
+
+        $this->assertStringContainsString('<title>Birmingham Ink Recipes - Changes</title>', $html);
+        $this->assertStringContainsString('href="../template/styles.css"', $html);
+        $this->assertStringContainsString('<h1>Recipe Changes</h1>', $html);
+        $this->assertStringContainsString('<a href="../" class="btn btn-icon" title="Recipes">', $html);
+
+        $may = strpos($html, 'May 31, 2025');
+        $nov = strpos($html, 'Nov 9, 2024');
+        $this->assertNotFalse($may);
+        $this->assertNotFalse($nov);
+        $this->assertLessThan($nov, $may, 'newest date group comes first');
+
+        $this->assertStringContainsString('<span class="change-type change-added">Added</span>', $html);
+        $this->assertStringContainsString('<span class="change-type change-changed">Changed</span>', $html);
+        $this->assertStringContainsString('Kyanite &amp; Co', $html);
+        $this->assertStringContainsString('<li>Dilution Solution: 1 → 2</li>', $html);
+        $this->assertStringContainsString('href="https://www.birminghampens.com/products/abacus"', $html);
+
+        $this->assertStringContainsString('<h2>Legacy snapshots</h2>', $html);
+        $this->assertStringContainsString('<a href="2025-05-31-recipes.html">Recipes as of May 31, 2025</a>', $html);
+        $legacyFirst = strpos($html, 'href="2025-05-31-recipes.html"');
+        $legacySecond = strpos($html, 'href="2024-11-09-recipes.html"');
+        $this->assertLessThan($legacySecond, $legacyFirst, 'legacy snapshots newest first');
+        $this->assertStringNotContainsString('(Current)', $html);
+    }
+
+    public function testGenerateChangesPageHandlesNoEventsAndNoSnapshots(): void
+    {
+        $html = generateChangesPage([], [], 'September 5, 2026');
+
+        $this->assertStringContainsString('No changes recorded yet.', $html);
+        $this->assertStringNotContainsString('<h2>Legacy snapshots</h2>', $html);
     }
 }
