@@ -11,7 +11,11 @@
         "phpstan/phpstan": "^2.2"
     },
     "autoload": {
-        "files": ["utility/functions.php"]
+        "files": [
+            "utility/functions.php",
+            "utility/recipe_repository.php",
+            "utility/archive_parser.php"
+        ]
     },
     "scripts": {
         "test": "phpunit",
