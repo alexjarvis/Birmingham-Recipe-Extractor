@@ -23,13 +23,19 @@ the repository and are shown with a "Not listed since" badge.
   `utility/`, entry point `run.php`. The pipeline is: fetch products →
   extract recipes → merge into the repository → render `index.html` →
   render the Changes page.
-- **Daily run on GitHub Actions** — `.github/workflows/deploy.yml` runs
-  `phpstan` → `phpunit` → `php run.php` daily at 00:00 UTC. If `data/`
-  changed, it commits and pushes to GitLab `main` (the authoritative copy,
-  via the `GITLAB_URL` secret), then publishes `output/` to `gh-pages`.
+- **Daily run on GitLab CI** — the `scrape` job in `.gitlab-ci.yml` runs
+  `php run.php` on each scheduled pipeline, after `php-syntax` and `phpunit`
+  pass. It runs on the lab runner because the storefront's Cloudflare returns
+  429 to GitHub Actions runner IPs. If `data/` changed, it commits to GitLab
+  `main` (the authoritative copy) and mirrors `main` to GitHub, then publishes
+  `output/` to `gh-pages` on both. To run it by hand: Build → Pipelines → Run
+  pipeline on `main` with variable `SCRAPE=true`.
+- **Manual run on GitHub Actions** — `.github/workflows/deploy.yml` does the
+  same from GitHub (`workflow_dispatch` only; it has no schedule any more and
+  is likely to hit the 429).
 - **Mirrors via GitLab CI** — `.gitlab-ci.yml` mirrors `main` from GitLab to
   GitHub on every commit, mirrors `gh-pages` from GitHub back to GitLab, and
-  serves GitLab Pages from the mirrored `gh-pages` branch.
+  serves GitLab Pages from the `gh-pages` branch.
 - **Output** — `index.html` shows the whole repository. `archive/index.html`
   is the change log plus links to the frozen legacy snapshots
   (`archive/*-recipes.html`, Nov 2024 – Aug 2026). No new snapshots are
