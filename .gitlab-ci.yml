@@ -3,6 +3,7 @@ stages:
   - sync
   - lint
   - test
+  - scrape
   - build
   - deploy
 
@@ -121,6 +122,73 @@ phpunit:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# =============================================================================
+# DAILY SCRAPE (LAB-56)
+# =============================================================================
+# The storefront's Cloudflare returns 429 to GitHub Actions runner IPs, so the
+# daily run happens here, on the lab runner, instead of in
+# .github/workflows/deploy.yml. Runs on every scheduled pipeline (after
+# php-syntax and phpunit pass) and on a manual "Run pipeline" with SCRAPE=true.
+#
+# Pushes made with CI_JOB_TOKEN don't start pipelines, so this job does the
+# mirroring itself: data/ commit to GitLab main and GitHub main, output/ to
+# gh-pages on both. The `pages` job then republishes GitLab Pages.
+scrape:
+  stage: scrape
+  image: php:8.5-cli-alpine
+  variables:
+    GIT_DEPTH: "0"
+  timeout: 1h
+  before_script:
+    - apk add --no-cache git
+    - git config --global user.email "gitlab-ci@rivendell.fivedigitinteger.com"
+    - git config --global user.name "GitLab CI"
+    - git remote add github "${GITHUB_URL}" || true
+    - GITLAB_PUSH_URL="https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
+  script:
+    - git fetch --quiet origin main gh-pages
+    - git checkout --quiet -B main origin/main
+    - |
+      # Restore the frozen legacy snapshots and downloaded images from gh-pages.
+      # index.html and archive/index.html are regenerated every run.
+      mkdir -p output/archive output/images
+      RESTORE=$(mktemp -d)
+      git archive origin/gh-pages archive images | tar -x -C "$RESTORE"
+      cp "$RESTORE"/archive/*-recipes.html output/archive/ 2>/dev/null || true
+      cp -r "$RESTORE"/images/. output/images/ 2>/dev/null || true
+      echo "Restored $(ls output/archive | wc -l) snapshots, $(ls output/images | wc -l) images"
+    - php run.php
+    - |
+      # Commit data/ to GitLab main, then mirror main to GitHub (fast-forward only).
+      if [ -n "$(git status --porcelain data/)" ]; then
+        git add data/
+        git commit --quiet -m "Update recipe repository ($(date -u +%Y-%m-%d))"
+        git push "$GITLAB_PUSH_URL" HEAD:main
+        echo "Pushed $(git rev-parse --short HEAD) to GitLab main."
+      else
+        echo "No repository changes."
+      fi
+      git push github HEAD:main
+    - |
+      # Publish output/ as a single new commit on gh-pages (like
+      # peaceiris/actions-gh-pages: whole tree replaced, .nojekyll added).
+      touch output/.nojekyll
+      export GIT_INDEX_FILE="$(mktemp -u)"
+      git --work-tree=output add --all --force .
+      TREE=$(git write-tree)
+      unset GIT_INDEX_FILE
+      if [ "$TREE" = "$(git rev-parse 'origin/gh-pages^{tree}')" ]; then
+        echo "gh-pages: no changes."
+        exit 0
+      fi
+      PAGES=$(git commit-tree "$TREE" -p origin/gh-pages -m "deploy: $(git rev-parse HEAD)")
+      git push github "$PAGES:refs/heads/gh-pages"
+      git push "$GITLAB_PUSH_URL" "$PAGES:refs/heads/gh-pages"
+      echo "Published gh-pages $(git rev-parse --short "$PAGES")."
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "web" && $SCRAPE == "true" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 # Docker build using Docker-in-Docker
 docker-build:

@@ -1,8 +1,9 @@
 name: Generate and Deploy Recipes
 
+# The daily run moved to the `scrape` job in .gitlab-ci.yml (LAB-56): the
+# storefront's Cloudflare returns 429 to GitHub Actions runner IPs. Kept for
+# manual runs only.
 on:
-  schedule:
-    - cron: "0 0 * * *"  # Runs daily at midnight UTC
   workflow_dispatch:  # Allows manual triggering from the Actions tab
 
 permissions:
