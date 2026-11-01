@@ -1326,4 +1326,46 @@ final class FunctionsTest extends TestCase
         $this->assertStringContainsString('No changes recorded yet.', $html);
         $this->assertStringNotContainsString('<h2>Legacy snapshots</h2>', $html);
     }
+
+    public function testProductsShownOnPageKeepsRecipesAndTheirIngredients(): void
+    {
+        $recipes = [
+            ['title' => 'Sailfish', 'recipe_components' => ['Airline' => 2, 'Chimney Soot' => 1]],
+        ];
+        $products = [
+            ['title' => 'Sailfish'],
+            ['title' => 'Airline'],
+            ['title' => 'Chimney Soot'],
+            ['title' => 'Sailfish Tuna Pair'],
+            ['title' => 'Model C Pen'],
+            ['title' => 'Concord Grape Twinkle'],
+        ];
+
+        $shown = productsShownOnPage($products, $recipes);
+
+        $this->assertSame(['Sailfish', 'Airline', 'Chimney Soot'], array_column($shown, 'title'));
+    }
+
+    public function testPruneUnreferencedImagesDeletesOnlyUnusedFiles(): void
+    {
+        $dir = $this->makeTempDir();
+        try {
+            mkdir($dir . '/images');
+            mkdir($dir . '/archive');
+            file_put_contents($dir . '/index.html', '<img src="images/Live.jpg"><img src="images/R&amp;D.jpg">');
+            file_put_contents($dir . '/archive/2024-11-09-recipes.html', '<img class="product-img" src="../images/Legacy.jpg?v=1" />');
+            foreach (['Live.jpg', 'R&D.jpg', 'Legacy.jpg', 'Bundle.jpg', 'Pen.jpg', '.gitkeep'] as $name) {
+                file_put_contents($dir . '/images/' . $name, 'x');
+            }
+
+            $deleted = pruneUnreferencedImages($dir, $dir . '/images');
+
+            $this->assertSame(['Bundle.jpg', 'Pen.jpg'], $deleted);
+            $remaining = array_values(array_diff(scandir($dir . '/images'), ['.', '..']));
+            sort($remaining);
+            $this->assertSame(['.gitkeep', 'Legacy.jpg', 'Live.jpg', 'R&D.jpg'], $remaining);
+        } finally {
+            $this->rmrf($dir);
+        }
+    }
 }
