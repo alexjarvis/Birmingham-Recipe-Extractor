@@ -774,6 +774,68 @@ function updatePathsInIndex(string $indexFile): void {
 }
 
 /**
+ * Keep only the products the page shows: recipe inks and the inks their
+ * recipes use. Bundles, pens and inks without a recipe never appear, so their
+ * images aren't worth downloading.
+ *
+ * @param array<int, array<string, mixed>> $products
+ * @param array<int, array<string, mixed>> $recipes  From repositoryRecipesForPage().
+ * @return array<int, array<string, mixed>>
+ */
+function productsShownOnPage(array $products, array $recipes): array {
+  $shown = array_flip(array_merge(array_column($recipes, 'title'), array_keys(ingredientTotals($recipes))));
+  return array_values(array_filter($products, fn(array $p) => isset($shown[(string) ($p['title'] ?? '')])));
+}
+
+/**
+ * Image names referenced as images/<name> by any HTML, CSS or JS file under $outputDir.
+ *
+ * @return array<string, true>
+ */
+function referencedImages(string $outputDir): array {
+  $referenced = [];
+  $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($outputDir, FilesystemIterator::SKIP_DOTS));
+  foreach ($files as $file) {
+    if (!$file instanceof SplFileInfo || !$file->isFile() || !in_array(strtolower($file->getExtension()), ['html', 'css', 'js'], TRUE)) {
+      continue;
+    }
+    $content = file_get_contents($file->getPathname());
+    if ($content === FALSE || !preg_match_all('~images/([^"\'<>\s?#)]+)~', $content, $matches)) {
+      continue;
+    }
+    foreach ($matches[1] as $name) {
+      $name = html_entity_decode($name, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+      $referenced[$name] = TRUE;
+      $referenced[rawurldecode($name)] = TRUE;
+    }
+  }
+  return $referenced;
+}
+
+/**
+ * Delete files in $imageDir that no page under $outputDir references.
+ * Dotfiles (.gitkeep) are kept.
+ *
+ * @return array<int, string> Names of the deleted files.
+ */
+function pruneUnreferencedImages(string $outputDir, string $imageDir): array {
+  $referenced = referencedImages($outputDir);
+  $deleted = [];
+  foreach (scandir($imageDir) ?: [] as $name) {
+    $path = $imageDir . '/' . $name;
+    if ($name[0] === '.' || !is_file($path) || isset($referenced[$name])) {
+      continue;
+    }
+    if (!unlink($path)) {
+      throw new Exception("Failed to delete $path");
+    }
+    $deleted[] = $name;
+  }
+  sort($deleted);
+  return $deleted;
+}
+
+/**
  * Build the curl_setopt options array for a recipe-page fetch. Pure function
  * so the configuration can be unit-tested without making real HTTP calls.
  *

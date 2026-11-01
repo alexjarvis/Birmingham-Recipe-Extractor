@@ -17,6 +17,9 @@ try {
   echo "Generating changes page..." . PHP_EOL;
   require_once 'operations/generate_changes.php';
 
+  echo "Pruning unreferenced images..." . PHP_EOL;
+  require_once 'operations/prune_images.php';
+
   echo "Workflow completed successfully!" . PHP_EOL;
 }
 catch (Throwable $e) {

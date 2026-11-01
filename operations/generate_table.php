@@ -15,7 +15,8 @@ try {
 
   // Today's product list still drives image downloads: base inks used as
   // ingredients (Airline, Chimney Soot, ...) are live products with images.
-  $liveProducts = loadProducts(ENRICHED_PRODUCTS_FILE);
+  // Only products the page shows are downloaded (LAB-88).
+  $liveProducts = productsShownOnPage(loadProducts(ENRICHED_PRODUCTS_FILE), $recipes);
   [, , $liveImages] = processProducts($liveProducts);
   // Precedence: live product image, then the repository's remembered image
   // (recovered from legacy snapshots for inks the storefront dropped).
